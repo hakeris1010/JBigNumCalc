@@ -16,7 +16,13 @@ public class JBigNums {
      * @param args the command line arguments
      */
     public static void main(String[] args) {
-        // TODO code application logic here
+        System.out.println("Testing. Now nothing is expected.");
+        BasicCalculator calc = new BasicCalculator("1");
+        calc.setOperands(1, 2);
+        calc.setOperation("+");
+        double res = calc.makeCalculation();
+        calc.println();
+        System.out.println("Last result: " + res);
     }
     
 }
