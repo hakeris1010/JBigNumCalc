@@ -16,9 +16,6 @@ public class JBigNums {
      * @param args the command line arguments
      */
     public static void main(String[] args) {
-<<<<<<< Updated upstream
-        // TODO code application logic here
-=======
         System.out.println("Testing. BasicCalculator:");
         BasicCalculator calc = new BasicCalculator("1");
         calc.setOperands(1, 2);
@@ -43,8 +40,6 @@ public class JBigNums {
         res = calc.makeCalculation();
         System.out.println("Result: " + calc.getOperand1() + calc.getOperation() + calc.getOperand2() + " = " + res);
         calc.println();
-                
->>>>>>> Stashed changes
     }
     
 }

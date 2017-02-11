@@ -12,9 +12,7 @@ import java.util.Arrays;
  *
  * @author Kestutis
  */
-public class BasicCalculator {
-    protected double oper1 = 0;
-    protected double oper2 = 0;
+public class BasicCalculator extends TwoOperandBasicCalculator {
     protected String opc = "+";
     protected double result;
     
@@ -64,12 +62,6 @@ public class BasicCalculator {
     }
     public final double getLastResult(){
         return result;
-    }
-    public final double getOperand1(){
-        return oper1;
-    }
-    public final double getOperand2(){
-        return oper2;
     }
     
     public double makeCalculation()
