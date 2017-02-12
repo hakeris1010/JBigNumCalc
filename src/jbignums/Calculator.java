@@ -31,3 +31,5 @@ abstract class TwoOperandBasicCalculator implements TwoOperandCalculator
     abstract public void setOperation(String opcode);
     abstract public String getOperation();
 }
+
+//test
