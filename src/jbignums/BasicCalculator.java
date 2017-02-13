@@ -19,11 +19,19 @@ public class BasicCalculator extends TwoOperandBasicCalculator {
     private static int calcCount;
     private final String calcId;
     
-    protected void setOpcodeFromValidValues(String opcode, boolean throwExceptionIfBad, String[] validvals)
+    protected void setOpcodeFromValidValues(String opcode, boolean throwExceptionIfBad, String[] validvals) throws CalcException
     {
         opc = (Arrays.asList(validvals).contains(opcode) ? opcode : opc);
         if(throwExceptionIfBad && !opc.equals(opcode))
-            throw new RuntimeException("Invalid value at setOperation("+opcode+")");
+            throw new CalcException("Invalid value at setOperation("+opcode+")");
+    }
+    protected double makeCalculationWithParams(double op1, double op2, String opco) throws CalculationErrorCalcException
+    {
+        double r3sult = (opco=="+" ? op1+op2 : (opco=="-" ? op1-op2 : 
+                (opco=="*" ? op1*op2 : (opco=="/" ? op1/op2 : 0))));
+        if(!Double.isFinite(r3sult))
+            throw new CalculationErrorCalcException("Result is NaN!");
+        return r3sult;
     }
     
     public BasicCalculator()
@@ -48,11 +56,11 @@ public class BasicCalculator extends TwoOperandBasicCalculator {
         oper1=op1;
         oper2=op2;
     }
-    public void setOperation(String opcode)
+    public void setOperation(String opcode) throws CalcException
     {
         this.setOpcodeFromValidValues(opcode, true, new String[]{"+","-","*","/"});
     }
-    public void setOperation(String opcode, boolean throwExceptionIfBad)
+    public void setOperation(String opcode, boolean throwExceptionIfBad) throws CalcException
     {
         this.setOpcodeFromValidValues(opcode, throwExceptionIfBad, new String[]{"+","-","*","/"});
     }
@@ -64,11 +72,9 @@ public class BasicCalculator extends TwoOperandBasicCalculator {
         return result;
     }
     
-    public double makeCalculation()
+    public double makeCalculation() throws CalculationErrorCalcException
     {
-        result = (opc=="+" ? oper1+oper2 : (opc=="-" ? oper1-oper2 : 
-                (opc=="*" ? oper1*oper2 : (opc=="/" ? oper1/oper2 : 0))));
-        return result;
+        return (result = makeCalculationWithParams(oper1, oper2, opc));
     }
     public void swapOperands()
     {
