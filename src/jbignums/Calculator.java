@@ -26,8 +26,8 @@ abstract class TwoOperandBasicCalculator implements TwoOperandCalculator
     public double getOperand2(){
         return oper2;
     }
-    
     abstract public void setOperands(double op1, double op2);
     abstract public void setOperation(String opcode) throws CalcException ; 
     abstract public String getOperation();
+    abstract public void println();
 }

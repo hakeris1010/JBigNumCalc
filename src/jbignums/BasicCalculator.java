@@ -12,7 +12,7 @@ import java.util.Arrays;
  *
  * @author Kestutis
  */
-public class BasicCalculator extends TwoOperandBasicCalculator {
+public class BasicCalculator extends TwoOperandBasicCalculator implements Cloneable {
     protected String opc = "+";
     protected double result;
     
@@ -88,9 +88,21 @@ public class BasicCalculator extends TwoOperandBasicCalculator {
     {
         return "BasicCalculator: ID: " + calcId + ", Count: " + calcCount + ", Last Result:" + result;                
     }
-    
+    @Override
     public void println()
     {
         System.out.println(this);
+    }
+    @Override
+    public BasicCalculator clone() throws CloneNotSupportedException
+    {
+        /*BasicCalculator nuca = (BasicCalculator)super.clone();
+        /*nuca.oper1 = oper1;
+        nuca.oper2 = oper2;
+        nuca.calcId = calcId;
+        nuca.opc = opc;
+        nuca.result = result;
+        return nuca;*/
+        return (BasicCalculator)super.clone();
     }
 }

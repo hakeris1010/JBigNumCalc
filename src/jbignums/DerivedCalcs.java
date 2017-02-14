@@ -79,4 +79,18 @@ class ThreeNumberCalculator extends BasicCalculator
     {
         return "ThreeNumberCalculator: Operation:"+oper1+opc+oper2+opc2+oper3+", LastResult: "+result;
     } 
+    
+    @Override
+    public BasicCalculator clone() throws CloneNotSupportedException
+    {
+        ThreeNumberCalculator nuca = null;
+        try{
+            nuca = (ThreeNumberCalculator)super.clone();
+        } catch (CloneNotSupportedException e) {
+            throw new RuntimeException("Impossible thing happened. It must be a dream.");
+        }
+        nuca.opc2 = opc2;
+        nuca.oper3 = oper3;
+        return nuca;
+    }
 }
