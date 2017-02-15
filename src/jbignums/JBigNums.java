@@ -17,12 +17,14 @@ public class JBigNums {
      */
     public static void main(String[] args) {
         System.out.println("Testing. Now nothing is expected.");
-        BasicCalculator calc = new BasicCalculator("1");
+        /*BasicCalculator calc = new BasicCalculator("1");
         calc.setOperands(1, 2);
         calc.setOperation("+");
         double res = calc.makeCalculation();
         calc.println();
-        System.out.println("Last result: " + res);
+        System.out.println("Last result: " + res);*/
+        
+        DateCalcer.doStuff();       
     }
     
 }
