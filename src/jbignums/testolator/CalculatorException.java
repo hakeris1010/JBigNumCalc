@@ -1,4 +1,4 @@
-package jbignums;
+package jbignums.testolator;
 
 class CalcException extends Exception
 {

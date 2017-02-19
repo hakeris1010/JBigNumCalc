@@ -1,4 +1,4 @@
-package jbignums;
+package jbignums.testolator;
 
 public interface Calculator
 {    

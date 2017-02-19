@@ -4,7 +4,7 @@
  * and open the template in the editor.
  */
 
-package jbignums;
+package jbignums.testolator;
 
 import java.util.Arrays;
 
