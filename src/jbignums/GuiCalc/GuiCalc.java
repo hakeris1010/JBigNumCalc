@@ -129,19 +129,19 @@ public class GuiCalc extends JFrame{
         setButtonPane();
         setExtendedPane();
         
-        ImageIcon icon = new ImageIcon(GuiCalc.class.getResource("/res/kawaii2.png"));
+        ImageIcon icon = new ImageIcon(GuiCalc.class.getResource("/res/kawaii2.png")); //Our kawaii girl 
+        
         JLabel label = new JLabel(icon);
         JPanel kawaiiPanel = new JPanel();
         kawaiiPanel.add(label);
         
-        /*kawaiiPanel.addComponentListener(new ComponentAdapter() {
+        kawaiiPanel.addComponentListener(new ComponentAdapter() {
             @Override
             public void componentResized(ComponentEvent e) {
-                Image image = ((ImageIcon)(label.getIcon())).getImage();
-                Image newimg = image.getScaledInstance(kawaiiPanel.getWidth(), kawaiiPanel.getHeight(), java.awt.Image.SCALE_SMOOTH); // scale it the smooth way  
+                Image newimg = icon.getImage().getScaledInstance(kawaiiPanel.getWidth(), kawaiiPanel.getHeight(), java.awt.Image.SCALE_SMOOTH); // scale it the smooth way  
                 label.setIcon(new ImageIcon(newimg));  // transform it back
             }
-        });*/
+        });
         
         add(kawaiiPanel, BorderLayout.CENTER);
         
