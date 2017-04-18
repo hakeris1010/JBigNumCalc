@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="ChangeListManager">
-    <list default="true" id="10cff852-3d62-4724-a4cc-18ddbf8a4706" name="Default" comment="">
+    <list default="true" id="10cff852-3d62-4724-a4cc-18ddbf8a4706" name="Default" comment="Add'd Workspace">
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/.idea/workspace.xml" afterPath="$PROJECT_DIR$/.idea/workspace.xml" />
     </list>
     <ignored path="$PROJECT_DIR$/out/" />
@@ -467,7 +467,14 @@
       <option name="project" value="LOCAL" />
       <updated>1492526772120</updated>
     </task>
-    <option name="localTasksCounter" value="3" />
+    <task id="LOCAL-00003" summary="Add'd Workspace">
+      <created>1492526818547</created>
+      <option name="number" value="00003" />
+      <option name="presentableId" value="LOCAL-00003" />
+      <option name="project" value="LOCAL" />
+      <updated>1492526818547</updated>
+    </task>
+    <option name="localTasksCounter" value="4" />
     <servers />
   </component>
   <component name="ToolWindowManager">
@@ -509,7 +516,8 @@
   <component name="VcsManagerConfiguration">
     <MESSAGE value="Created WORKING IntelliJ IDEA Project." />
     <MESSAGE value="Add'd IML Module Root." />
-    <option name="LAST_COMMIT_MESSAGE" value="Add'd IML Module Root." />
+    <MESSAGE value="Add'd Workspace" />
+    <option name="LAST_COMMIT_MESSAGE" value="Add'd Workspace" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager />
