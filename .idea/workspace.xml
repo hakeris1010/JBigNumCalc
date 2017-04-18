@@ -1,16 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="ChangeListManager">
-    <list default="true" id="10cff852-3d62-4724-a4cc-18ddbf8a4706" name="Default" comment="Created WORKING IntelliJ IDEA Project.">
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/.idea/artifacts/JBigNums.xml" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/.idea/JBigNums.iml" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/META-INF/MANIFEST.MF" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/build.xml" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/manifest.mf" afterPath="" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/.idea/misc.xml" afterPath="$PROJECT_DIR$/.idea/misc.xml" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/.idea/modules.xml" afterPath="$PROJECT_DIR$/.idea/modules.xml" />
+    <list default="true" id="10cff852-3d62-4724-a4cc-18ddbf8a4706" name="Default" comment="">
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/.idea/workspace.xml" afterPath="$PROJECT_DIR$/.idea/workspace.xml" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/src/jbignums/GuiCalc/GuiCalc.java" afterPath="$PROJECT_DIR$/src/jbignums/GuiCalc/GuiCalc.java" />
     </list>
     <ignored path="$PROJECT_DIR$/out/" />
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
@@ -461,6 +453,21 @@
       <option name="presentableId" value="Default" />
       <updated>1492525832553</updated>
     </task>
+    <task id="LOCAL-00001" summary="Created WORKING IntelliJ IDEA Project.">
+      <created>1492526617123</created>
+      <option name="number" value="00001" />
+      <option name="presentableId" value="LOCAL-00001" />
+      <option name="project" value="LOCAL" />
+      <updated>1492526617123</updated>
+    </task>
+    <task id="LOCAL-00002" summary="Add'd IML Module Root.">
+      <created>1492526772120</created>
+      <option name="number" value="00002" />
+      <option name="presentableId" value="LOCAL-00002" />
+      <option name="project" value="LOCAL" />
+      <updated>1492526772120</updated>
+    </task>
+    <option name="localTasksCounter" value="3" />
     <servers />
   </component>
   <component name="ToolWindowManager">
@@ -501,7 +508,8 @@
   </component>
   <component name="VcsManagerConfiguration">
     <MESSAGE value="Created WORKING IntelliJ IDEA Project." />
-    <option name="LAST_COMMIT_MESSAGE" value="Created WORKING IntelliJ IDEA Project." />
+    <MESSAGE value="Add'd IML Module Root." />
+    <option name="LAST_COMMIT_MESSAGE" value="Add'd IML Module Root." />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager />
