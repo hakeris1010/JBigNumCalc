@@ -39,9 +39,13 @@
     </properties>
   </component>
 <<<<<<< HEAD
+<<<<<<< HEAD
   <component name="ProjectRootManager" version="2" languageLevel="JDK_1_8" default="true" project-jdk-name="1.8" project-jdk-type="JavaSDK">
     <output url="file://$PROJECT_DIR$/out" />
   </component>
+=======
+  <component name="ProjectRootManager" version="2" default="true" />
+>>>>>>> a9c8df129b745829ffc27b4c81c43d4f3f3f88e9
 =======
   <component name="ProjectRootManager" version="2" default="true" />
 >>>>>>> a9c8df129b745829ffc27b4c81c43d4f3f3f88e9

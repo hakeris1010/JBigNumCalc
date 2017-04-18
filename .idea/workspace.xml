@@ -2,10 +2,14 @@
 <project version="4">
   <component name="ChangeListManager">
 <<<<<<< HEAD
+<<<<<<< HEAD
     <list default="true" id="10cff852-3d62-4724-a4cc-18ddbf8a4706" name="Default" comment="Add'd Workspace">
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/.idea/workspace.xml" afterPath="$PROJECT_DIR$/.idea/workspace.xml" />
     </list>
     <ignored path="$PROJECT_DIR$/out/" />
+=======
+    <list default="true" id="b1241549-7b9e-49fb-bd42-c30c1f872608" name="Default" comment="" />
+>>>>>>> a9c8df129b745829ffc27b4c81c43d4f3f3f88e9
 =======
     <list default="true" id="b1241549-7b9e-49fb-bd42-c30c1f872608" name="Default" comment="" />
 >>>>>>> a9c8df129b745829ffc27b4c81c43d4f3f3f88e9
@@ -17,6 +21,7 @@
     <option name="LAST_RESOLUTION" value="IGNORE" />
   </component>
 <<<<<<< HEAD
+<<<<<<< HEAD
   <component name="ExecutionTargetManager" SELECTED_TARGET="default_target" />
   <component name="FileEditorManager">
     <leaf>
@@ -26,6 +31,8 @@
             <state relative-caret-position="172">
               <caret line="19" column="21" lean-forward="true" selection-start-line="19" selection-start-column="21" selection-end-line="19" selection-end-column="21" />
 =======
+=======
+>>>>>>> a9c8df129b745829ffc27b4c81c43d4f3f3f88e9
   <component name="CreatePatchCommitExecutor">
     <option name="PATCH_PATH" value="" />
   </component>
@@ -54,12 +61,16 @@
           <provider selected="true" editor-type-id="text-editor">
             <state relative-caret-position="0">
               <caret line="0" column="0" lean-forward="false" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="0" />
+<<<<<<< HEAD
+>>>>>>> a9c8df129b745829ffc27b4c81c43d4f3f3f88e9
+=======
 >>>>>>> a9c8df129b745829ffc27b4c81c43d4f3f3f88e9
               <folding />
             </state>
           </provider>
         </entry>
       </file>
+<<<<<<< HEAD
 <<<<<<< HEAD
       <file leaf-file-name="GuiCalc.java" pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/src/jbignums/GuiCalc/GuiCalc.java">
@@ -70,6 +81,8 @@
                 <element signature="e#4625#5005#0" expanded="true" />
                 <element signature="e#5004#5005#0" expanded="true" />
 =======
+=======
+>>>>>>> a9c8df129b745829ffc27b4c81c43d4f3f3f88e9
       <file leaf-file-name="Calculator.java" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/src/jbignums/testolator/Calculator.java">
           <provider selected="true" editor-type-id="text-editor">
@@ -92,6 +105,9 @@
               <caret line="0" column="0" lean-forward="false" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="0" />
               <folding>
                 <element signature="e#0#3105#0" expanded="true" />
+<<<<<<< HEAD
+>>>>>>> a9c8df129b745829ffc27b4c81c43d4f3f3f88e9
+=======
 >>>>>>> a9c8df129b745829ffc27b4c81c43d4f3f3f88e9
               </folding>
             </state>
@@ -109,6 +125,7 @@
     </option>
   </component>
 <<<<<<< HEAD
+<<<<<<< HEAD
   <component name="IdeDocumentHistory">
     <option name="CHANGED_PATHS">
       <list>
@@ -121,10 +138,15 @@
     <option name="y" value="80" />
     <option name="width" value="1522" />
 =======
+=======
+>>>>>>> a9c8df129b745829ffc27b4c81c43d4f3f3f88e9
   <component name="ProjectFrameBounds">
     <option name="x" value="260" />
     <option name="y" value="53" />
     <option name="width" value="1400" />
+<<<<<<< HEAD
+>>>>>>> a9c8df129b745829ffc27b4c81c43d4f3f3f88e9
+=======
 >>>>>>> a9c8df129b745829ffc27b4c81c43d4f3f3f88e9
     <option name="height" value="1000" />
   </component>
@@ -144,8 +166,14 @@
     </navigator>
     <panes>
 <<<<<<< HEAD
+<<<<<<< HEAD
       <pane id="Scope" />
       <pane id="PackagesPane" />
+=======
+      <pane id="Scratches" />
+      <pane id="PackagesPane" />
+      <pane id="Scope" />
+>>>>>>> a9c8df129b745829ffc27b4c81c43d4f3f3f88e9
 =======
       <pane id="Scratches" />
       <pane id="PackagesPane" />
@@ -156,23 +184,6 @@
           <PATH>
             <PATH_ELEMENT>
 <<<<<<< HEAD
-              <option name="myItemId" value="JBigNums" />
-              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.ProjectViewProjectNode" />
-            </PATH_ELEMENT>
-            <PATH_ELEMENT>
-              <option name="myItemId" value="JBigNums" />
-=======
-              <option name="myItemId" value="JBigNumCalc" />
-              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.ProjectViewProjectNode" />
-            </PATH_ELEMENT>
-            <PATH_ELEMENT>
-              <option name="myItemId" value="JBigNumCalc" />
->>>>>>> a9c8df129b745829ffc27b4c81c43d4f3f3f88e9
-              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PsiDirectoryNode" />
-            </PATH_ELEMENT>
-          </PATH>
-          <PATH>
-            <PATH_ELEMENT>
 <<<<<<< HEAD
               <option name="myItemId" value="JBigNums" />
               <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.ProjectViewProjectNode" />
@@ -180,11 +191,40 @@
             <PATH_ELEMENT>
               <option name="myItemId" value="JBigNums" />
 =======
+=======
+>>>>>>> a9c8df129b745829ffc27b4c81c43d4f3f3f88e9
               <option name="myItemId" value="JBigNumCalc" />
               <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.ProjectViewProjectNode" />
             </PATH_ELEMENT>
             <PATH_ELEMENT>
               <option name="myItemId" value="JBigNumCalc" />
+<<<<<<< HEAD
+>>>>>>> a9c8df129b745829ffc27b4c81c43d4f3f3f88e9
+=======
+>>>>>>> a9c8df129b745829ffc27b4c81c43d4f3f3f88e9
+              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PsiDirectoryNode" />
+            </PATH_ELEMENT>
+          </PATH>
+          <PATH>
+            <PATH_ELEMENT>
+<<<<<<< HEAD
+<<<<<<< HEAD
+              <option name="myItemId" value="JBigNums" />
+              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.ProjectViewProjectNode" />
+            </PATH_ELEMENT>
+            <PATH_ELEMENT>
+              <option name="myItemId" value="JBigNums" />
+=======
+=======
+>>>>>>> a9c8df129b745829ffc27b4c81c43d4f3f3f88e9
+              <option name="myItemId" value="JBigNumCalc" />
+              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.ProjectViewProjectNode" />
+            </PATH_ELEMENT>
+            <PATH_ELEMENT>
+              <option name="myItemId" value="JBigNumCalc" />
+<<<<<<< HEAD
+>>>>>>> a9c8df129b745829ffc27b4c81c43d4f3f3f88e9
+=======
 >>>>>>> a9c8df129b745829ffc27b4c81c43d4f3f3f88e9
               <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PsiDirectoryNode" />
             </PATH_ELEMENT>
@@ -196,6 +236,7 @@
               <option name="myItemId" value="jbignums" />
               <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PsiDirectoryNode" />
             </PATH_ELEMENT>
+<<<<<<< HEAD
 <<<<<<< HEAD
             <PATH_ELEMENT>
               <option name="myItemId" value="JBigNums.java" />
@@ -210,6 +251,8 @@
             <PATH_ELEMENT>
               <option name="myItemId" value="JBigNums" />
 =======
+=======
+>>>>>>> a9c8df129b745829ffc27b4c81c43d4f3f3f88e9
           </PATH>
           <PATH>
             <PATH_ELEMENT>
@@ -218,6 +261,9 @@
             </PATH_ELEMENT>
             <PATH_ELEMENT>
               <option name="myItemId" value="JBigNumCalc" />
+<<<<<<< HEAD
+>>>>>>> a9c8df129b745829ffc27b4c81c43d4f3f3f88e9
+=======
 >>>>>>> a9c8df129b745829ffc27b4c81c43d4f3f3f88e9
               <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PsiDirectoryNode" />
             </PATH_ELEMENT>
@@ -237,17 +283,23 @@
           <PATH>
             <PATH_ELEMENT>
 <<<<<<< HEAD
+<<<<<<< HEAD
               <option name="myItemId" value="JBigNums" />
               <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.ProjectViewProjectNode" />
             </PATH_ELEMENT>
             <PATH_ELEMENT>
               <option name="myItemId" value="JBigNums" />
 =======
+=======
+>>>>>>> a9c8df129b745829ffc27b4c81c43d4f3f3f88e9
               <option name="myItemId" value="JBigNumCalc" />
               <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.ProjectViewProjectNode" />
             </PATH_ELEMENT>
             <PATH_ELEMENT>
               <option name="myItemId" value="JBigNumCalc" />
+<<<<<<< HEAD
+>>>>>>> a9c8df129b745829ffc27b4c81c43d4f3f3f88e9
+=======
 >>>>>>> a9c8df129b745829ffc27b4c81c43d4f3f3f88e9
               <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PsiDirectoryNode" />
             </PATH_ELEMENT>
@@ -267,17 +319,23 @@
           <PATH>
             <PATH_ELEMENT>
 <<<<<<< HEAD
+<<<<<<< HEAD
               <option name="myItemId" value="JBigNums" />
               <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.ProjectViewProjectNode" />
             </PATH_ELEMENT>
             <PATH_ELEMENT>
               <option name="myItemId" value="JBigNums" />
 =======
+=======
+>>>>>>> a9c8df129b745829ffc27b4c81c43d4f3f3f88e9
               <option name="myItemId" value="JBigNumCalc" />
               <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.ProjectViewProjectNode" />
             </PATH_ELEMENT>
             <PATH_ELEMENT>
               <option name="myItemId" value="JBigNumCalc" />
+<<<<<<< HEAD
+>>>>>>> a9c8df129b745829ffc27b4c81c43d4f3f3f88e9
+=======
 >>>>>>> a9c8df129b745829ffc27b4c81c43d4f3f3f88e9
               <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PsiDirectoryNode" />
             </PATH_ELEMENT>
@@ -293,6 +351,7 @@
               <option name="myItemId" value="GuiCalc" />
               <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PsiDirectoryNode" />
             </PATH_ELEMENT>
+<<<<<<< HEAD
 <<<<<<< HEAD
             <PATH_ELEMENT>
               <option name="myItemId" value="GuiCalc.java" />
@@ -311,6 +370,8 @@
             <PATH_ELEMENT>
               <option name="myItemId" value="res" />
 =======
+=======
+>>>>>>> a9c8df129b745829ffc27b4c81c43d4f3f3f88e9
           </PATH>
           <PATH>
             <PATH_ELEMENT>
@@ -323,12 +384,16 @@
             </PATH_ELEMENT>
             <PATH_ELEMENT>
               <option name="myItemId" value=".idea" />
+<<<<<<< HEAD
+>>>>>>> a9c8df129b745829ffc27b4c81c43d4f3f3f88e9
+=======
 >>>>>>> a9c8df129b745829ffc27b4c81c43d4f3f3f88e9
               <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PsiDirectoryNode" />
             </PATH_ELEMENT>
           </PATH>
         </subPane>
       </pane>
+<<<<<<< HEAD
 <<<<<<< HEAD
       <pane id="Scratches" />
     </panes>
@@ -352,12 +417,17 @@
   </component>
   <component name="RunManager" selected="Application.JBigNums">
 =======
+=======
+>>>>>>> a9c8df129b745829ffc27b4c81c43d4f3f3f88e9
     </panes>
   </component>
   <component name="PropertiesComponent">
     <property name="last_opened_file_path" value="$PROJECT_DIR$" />
   </component>
   <component name="RunManager">
+<<<<<<< HEAD
+>>>>>>> a9c8df129b745829ffc27b4c81c43d4f3f3f88e9
+=======
 >>>>>>> a9c8df129b745829ffc27b4c81c43d4f3f3f88e9
     <configuration default="true" type="#org.jetbrains.idea.devkit.run.PluginConfigurationType" factoryName="Plugin">
       <module name="" />
@@ -366,6 +436,7 @@
       <predefined_log_file id="idea.log" enabled="true" />
       <method />
     </configuration>
+<<<<<<< HEAD
 <<<<<<< HEAD
     <configuration default="true" type="AndroidRunConfigurationType" factoryName="Android App">
       <module name="" />
@@ -424,6 +495,8 @@
     </configuration>
 =======
 >>>>>>> a9c8df129b745829ffc27b4c81c43d4f3f3f88e9
+=======
+>>>>>>> a9c8df129b745829ffc27b4c81c43d4f3f3f88e9
     <configuration default="true" type="Applet" factoryName="Applet">
       <option name="HTML_USED" value="false" />
       <option name="WIDTH" value="400" />
@@ -448,6 +521,7 @@
       <method />
     </configuration>
 <<<<<<< HEAD
+<<<<<<< HEAD
     <configuration default="true" type="GradleRunConfiguration" factoryName="Gradle">
       <ExternalSystemSettings>
         <option name="executionName" />
@@ -464,6 +538,8 @@
       </ExternalSystemSettings>
       <method />
     </configuration>
+=======
+>>>>>>> a9c8df129b745829ffc27b4c81c43d4f3f3f88e9
 =======
 >>>>>>> a9c8df129b745829ffc27b4c81c43d4f3f3f88e9
     <configuration default="true" type="JUnit" factoryName="JUnit">
@@ -487,6 +563,7 @@
       <patterns />
       <method />
     </configuration>
+<<<<<<< HEAD
 <<<<<<< HEAD
     <configuration default="true" type="JarApplication" factoryName="JAR Application">
       <extension name="coverage" enabled="false" merge="false" sample_coverage="true" runner="idea" />
@@ -536,6 +613,8 @@
     </configuration>
 =======
 >>>>>>> a9c8df129b745829ffc27b4c81c43d4f3f3f88e9
+=======
+>>>>>>> a9c8df129b745829ffc27b4c81c43d4f3f3f88e9
     <configuration default="true" type="Remote" factoryName="Remote">
       <option name="USE_SOCKET_TRANSPORT" value="true" />
       <option name="SERVER_MODE" value="false" />
@@ -573,6 +652,7 @@
       <method />
     </configuration>
 <<<<<<< HEAD
+<<<<<<< HEAD
     <configuration default="false" name="JBigNums" type="Application" factoryName="Application">
       <extension name="coverage" enabled="false" merge="false" sample_coverage="true" runner="idea" />
       <option name="MAIN_CLASS_NAME" value="jbignums.JBigNums" />
@@ -593,12 +673,15 @@
     </list>
 =======
 >>>>>>> a9c8df129b745829ffc27b4c81c43d4f3f3f88e9
+=======
+>>>>>>> a9c8df129b745829ffc27b4c81c43d4f3f3f88e9
   </component>
   <component name="ShelveChangesManager" show_recycled="false">
     <option name="remove_strategy" value="false" />
   </component>
   <component name="TaskManager">
     <task active="true" id="Default" summary="Default task">
+<<<<<<< HEAD
 <<<<<<< HEAD
       <changelist id="10cff852-3d62-4724-a4cc-18ddbf8a4706" name="Default" comment="" />
       <created>1492525832553</created>
@@ -633,6 +716,8 @@
   <component name="ToolWindowManager">
     <frame x="138" y="80" width="1522" height="1000" extended-state="0" />
 =======
+=======
+>>>>>>> a9c8df129b745829ffc27b4c81c43d4f3f3f88e9
       <changelist id="b1241549-7b9e-49fb-bd42-c30c1f872608" name="Default" comment="" />
       <created>1490009091192</created>
       <option name="number" value="Default" />
@@ -644,13 +729,19 @@
   <component name="ToolWindowManager">
     <frame x="260" y="53" width="1400" height="1000" extended-state="0" />
     <editor active="false" />
+<<<<<<< HEAD
+>>>>>>> a9c8df129b745829ffc27b4c81c43d4f3f3f88e9
+=======
 >>>>>>> a9c8df129b745829ffc27b4c81c43d4f3f3f88e9
     <layout>
       <window_info id="Palette" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="-1" side_tool="false" content_ui="tabs" />
       <window_info id="TODO" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="6" side_tool="false" content_ui="tabs" />
       <window_info id="Nl-Palette" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="-1" side_tool="false" content_ui="tabs" />
 <<<<<<< HEAD
+<<<<<<< HEAD
       <window_info id="Messages" active="true" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" show_stripe_button="true" weight="0.060606062" sideWeight="0.5" order="-1" side_tool="false" content_ui="tabs" />
+=======
+>>>>>>> a9c8df129b745829ffc27b4c81c43d4f3f3f88e9
 =======
 >>>>>>> a9c8df129b745829ffc27b4c81c43d4f3f3f88e9
       <window_info id="Palette&#9;" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="-1" side_tool="false" content_ui="tabs" />
@@ -659,8 +750,13 @@
       <window_info id="Event Log" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="-1" side_tool="true" content_ui="tabs" />
       <window_info id="Maven Projects" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="-1" side_tool="false" content_ui="tabs" />
 <<<<<<< HEAD
+<<<<<<< HEAD
       <window_info id="Run" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.32996634" sideWeight="0.5" order="2" side_tool="false" content_ui="tabs" />
       <window_info id="Version Control" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="-1" side_tool="false" content_ui="tabs" />
+=======
+      <window_info id="Run" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="2" side_tool="false" content_ui="tabs" />
+      <window_info id="Version Control" active="true" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" show_stripe_button="true" weight="0.32993197" sideWeight="0.5" order="-1" side_tool="false" content_ui="tabs" />
+>>>>>>> a9c8df129b745829ffc27b4c81c43d4f3f3f88e9
 =======
       <window_info id="Run" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="2" side_tool="false" content_ui="tabs" />
       <window_info id="Version Control" active="true" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" show_stripe_button="true" weight="0.32993197" sideWeight="0.5" order="-1" side_tool="false" content_ui="tabs" />
@@ -670,7 +766,11 @@
       <window_info id="Capture Tool" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="-1" side_tool="false" content_ui="tabs" />
       <window_info id="Designer" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="-1" side_tool="false" content_ui="tabs" />
 <<<<<<< HEAD
+<<<<<<< HEAD
       <window_info id="Project" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" show_stripe_button="true" weight="0.249668" sideWeight="0.5" order="0" side_tool="false" content_ui="combo" />
+=======
+      <window_info id="Project" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" show_stripe_button="true" weight="0.25" sideWeight="0.5" order="0" side_tool="false" content_ui="combo" />
+>>>>>>> a9c8df129b745829ffc27b4c81c43d4f3f3f88e9
 =======
       <window_info id="Project" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" show_stripe_button="true" weight="0.25" sideWeight="0.5" order="0" side_tool="false" content_ui="combo" />
 >>>>>>> a9c8df129b745829ffc27b4c81c43d4f3f3f88e9
@@ -679,7 +779,11 @@
       <window_info id="UI Designer" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="-1" side_tool="false" content_ui="tabs" />
       <window_info id="Theme Preview" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="-1" side_tool="false" content_ui="tabs" />
 <<<<<<< HEAD
+<<<<<<< HEAD
       <window_info id="Debug" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.39955106" sideWeight="0.5" order="3" side_tool="false" content_ui="tabs" />
+=======
+      <window_info id="Debug" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.4" sideWeight="0.5" order="3" side_tool="false" content_ui="tabs" />
+>>>>>>> a9c8df129b745829ffc27b4c81c43d4f3f3f88e9
 =======
       <window_info id="Debug" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.4" sideWeight="0.5" order="3" side_tool="false" content_ui="tabs" />
 >>>>>>> a9c8df129b745829ffc27b4c81c43d4f3f3f88e9
@@ -696,6 +800,7 @@
     <option name="myLimit" value="2678400000" />
   </component>
 <<<<<<< HEAD
+<<<<<<< HEAD
   <component name="VcsManagerConfiguration">
     <MESSAGE value="Created WORKING IntelliJ IDEA Project." />
     <MESSAGE value="Add'd IML Module Root." />
@@ -704,10 +809,13 @@
   </component>
 =======
 >>>>>>> a9c8df129b745829ffc27b4c81c43d4f3f3f88e9
+=======
+>>>>>>> a9c8df129b745829ffc27b4c81c43d4f3f3f88e9
   <component name="XDebuggerManager">
     <breakpoint-manager />
     <watches-manager />
   </component>
+<<<<<<< HEAD
 <<<<<<< HEAD
   <component name="antWorkspaceConfiguration">
     <option name="IS_AUTOSCROLL_TO_SOURCE" value="false" />
@@ -738,6 +846,8 @@
             <element signature="e#4625#5005#0" expanded="true" />
             <element signature="e#5004#5005#0" expanded="true" />
 =======
+=======
+>>>>>>> a9c8df129b745829ffc27b4c81c43d4f3f3f88e9
   <component name="editorHistoryManager">
     <entry file="file://$PROJECT_DIR$/src/jbignums/testolator/DerivedCalcs.java">
       <provider selected="true" editor-type-id="text-editor">
@@ -773,11 +883,15 @@
           <caret line="0" column="0" lean-forward="false" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="0" />
           <folding>
             <element signature="e#0#3105#0" expanded="true" />
+<<<<<<< HEAD
+>>>>>>> a9c8df129b745829ffc27b4c81c43d4f3f3f88e9
+=======
 >>>>>>> a9c8df129b745829ffc27b4c81c43d4f3f3f88e9
           </folding>
         </state>
       </provider>
     </entry>
+<<<<<<< HEAD
 <<<<<<< HEAD
   </component>
   <component name="masterDetails">
@@ -857,6 +971,8 @@
       </state>
     </states>
 =======
+=======
+>>>>>>> a9c8df129b745829ffc27b4c81c43d4f3f3f88e9
     <entry file="file://$PROJECT_DIR$/src/jbignums/testolator/CalculatorException.java">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="0">
@@ -865,6 +981,9 @@
         </state>
       </provider>
     </entry>
+<<<<<<< HEAD
+>>>>>>> a9c8df129b745829ffc27b4c81c43d4f3f3f88e9
+=======
 >>>>>>> a9c8df129b745829ffc27b4c81c43d4f3f3f88e9
   </component>
 </project>

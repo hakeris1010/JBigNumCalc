@@ -3,7 +3,11 @@
   <component name="ProjectModuleManager">
     <modules>
 <<<<<<< HEAD
+<<<<<<< HEAD
       <module fileurl="file://$PROJECT_DIR$/JBigNums.iml" filepath="$PROJECT_DIR$/JBigNums.iml" />
+=======
+      <module fileurl="file://$PROJECT_DIR$/.idea/JBigNumCalc.iml" filepath="$PROJECT_DIR$/.idea/JBigNumCalc.iml" />
+>>>>>>> a9c8df129b745829ffc27b4c81c43d4f3f3f88e9
 =======
       <module fileurl="file://$PROJECT_DIR$/.idea/JBigNumCalc.iml" filepath="$PROJECT_DIR$/.idea/JBigNumCalc.iml" />
 >>>>>>> a9c8df129b745829ffc27b4c81c43d4f3f3f88e9
