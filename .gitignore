@@ -2,3 +2,8 @@ dist/
 nbproject/private/
 build/classes/
 out/
+
+# IDEA files
+.idea/workspace.xml
+.idea/tasks.xml
+**.iws

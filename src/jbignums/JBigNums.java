@@ -6,21 +6,25 @@
 
 package jbignums;
 
+import jbignums.CalcDesigns.JGUI_SimpleCalculator;
+import jbignums.CalcDesigns.JetBrainsGUIDesign;
 import jbignums.GuiCalc.GuiCalc;
+
 /**
  *
  * @author Kestutis
  */
 
-class NyaaThread extends Thread
+class CalcManager
 {
-    private GuiCalc ga;
+    // Encapsulated GUI calculator object
+    private GuiCalc gcalc;
+    // Default GUI Design Layout.
+    private final JetBrainsGUIDesign defDesign = new JGUI_SimpleCalculator();
     
-    @Override
-    public void run()
+    public void start()
     {
-        GuiCalc nu = new GuiCalc();
-        nu.setVisible(true);
+        System.out.println("Nyaa");
     }
 }
 
@@ -31,9 +35,7 @@ public class JBigNums {
      * @param args the command line arguments
      */
     public static void main(String[] args) {
-        NyaaThread t1 = new NyaaThread();
-        //NyaaThread t2 = new NyaaThread();
-        t1.start();
-        //t2.start();
+        CalcManager newCalc = new CalcManager();
+        newCalc.start();
     }
 }
