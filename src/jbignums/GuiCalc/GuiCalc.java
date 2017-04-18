@@ -129,7 +129,7 @@ public class GuiCalc extends JFrame{
         setButtonPane();
         setExtendedPane();
         
-        ImageIcon icon = new ImageIcon(GuiCalc.class.getResource("/res/kawaii2.png")); //Our kawaii girl 
+        ImageIcon icon = new ImageIcon(GuiCalc.class.getResource("/kawaii2.png")); //Our kawaii girl
         
         JLabel label = new JLabel(icon);
         JPanel kawaiiPanel = new JPanel();
