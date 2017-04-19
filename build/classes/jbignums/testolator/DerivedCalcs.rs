@@ -1,2 +1,0 @@
-jbignums.testolator.BasicCalculatorWithPow
-jbignums.testolator.ThreeNumberCalculator

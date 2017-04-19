@@ -1,3 +1,0 @@
-jbignums.testolator.TwoOperandCalculator
-jbignums.testolator.Calculator
-jbignums.testolator.TwoOperandBasicCalculator
