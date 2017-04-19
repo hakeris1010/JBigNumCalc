@@ -2,11 +2,13 @@ package jbignums.CalcDesigns;
 
 import javax.swing.*;
 import java.awt.*;
+import java.awt.event.ComponentAdapter;
 
 /**
  * Created by Kestutis on 2017-04-18.
  */
-public class JGUI_SimpleCalculator implements JetBrainsGUIDesign {
+
+public class JGUI_SimpleCalculator implements SwingGUIDesign {
     private JTextArea CalcInput;
     private JTextField CalcOutput;
     private JPanel Functions;
@@ -42,6 +44,8 @@ public class JGUI_SimpleCalculator implements JetBrainsGUIDesign {
     private JButton MinusButton;
     private JButton PlusButton;
     private JButton EqualsButton;
+
+
 
     public JPanel getRootContentPanel() {
         // Return the Already-Initialized WootPaneru

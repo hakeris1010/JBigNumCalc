@@ -5,10 +5,14 @@
  */
 package jbignums.GuiCalc;
 
+import jbignums.CalcDesigns.GuiCalcMenu;
+import jbignums.CalcDesigns.JGUI_SimpleCalculator;
+import jbignums.CalcDesigns.SwingGUIDesign;
 import jbignums.JBigNums;
 import java.awt.*;
 import java.awt.datatransfer.*;
 import java.awt.event.*;
+import java.util.ArrayList;
 import java.util.concurrent.atomic.AtomicBoolean;
 import javax.swing.*;
 
@@ -17,46 +21,61 @@ import javax.swing.*;
  * @author Kestutis
  */
 
+class DefaultGUICalc {
+    static public final CalcMode calcMode = CalcMode.NORMAL;
+    static public final Class menuBar = GuiCalcMenu.class;
+}
+
 class GuiCalcState //Thread-safe.
 {
-    private volatile GuiCalc.CalcMode mode = GuiCalc.CalcMode.NORMAL;
-    private volatile String query;
-    private volatile String queryHistory;
-    
-    public AtomicBoolean isReady = new AtomicBoolean(true);
-    public AtomicBoolean isConversionMode = new AtomicBoolean(false);
-    public AtomicBoolean canTypeInQuery = new AtomicBoolean(false);   
-    
-    public synchronized GuiCalc.CalcMode getCalcMode(){ return mode; }
-    public synchronized void setCalcMode(GuiCalc.CalcMode md){ mode = md; }
-    
+    public CalcModeState modeState;
+
+    private String query;
+    private ArrayList<String> queryHistory;
+
+    // Getters, setters
+
     public synchronized String getQuery(){ return query; }
     public synchronized void setQuery(String qu){ query = qu; }
-    
-    public synchronized String getQueryHistory(){ return queryHistory; }
-    public synchronized void setQueryHistory(String qu){ queryHistory = qu; }
+
+    public synchronized ArrayList<String> getQueryHistory(){ return queryHistory; }
+    public synchronized void setQueryHistory(ArrayList<String> qu){ queryHistory = qu; }
+}
+
+class CalcModeState
+{
+    private CalcMode currentMode;
+
+}
+
+enum CalcMode {
+    NORMAL (300, 400, JGUI_SimpleCalculator.class),
+    SCIENTIFIC (600, 400, JGUI_SimpleCalculator.class);
+
+    // Private parts
+    private final int mWidth;
+    private final int mHeight;
+    private Class design;
+
+    CalcMode(int w, int h, Class designClass){
+        if(designClass != SwingGUIDesign.class)
+            throw new RuntimeException("Layout class is now implementing a SwingGUIDesign interface");
+
+        mWidth = w;
+        mHeight = h;
+        design = designClass;
+    }
+    public int width(){ return mWidth; }
+    public int height(){ return mHeight; }
+    public Class getDesign(){ return design; }
 }
 
 public class GuiCalc extends JFrame{
     public static final String VERSION = "v0.1";
-    
+
     private static int frameCount=0;
     private final GuiCalcState cs = new GuiCalcState();
-    
-    public enum CalcMode { 
-        NORMAL (300, 400), 
-        SCIENTIFIC (600, 400); 
-        
-        private final int mWidth;
-        private final int mHeight;
-        CalcMode(int w, int h){
-            mWidth = w;
-            mHeight = h;
-        }
-        public int width(){ return mWidth; }
-        public int height(){ return mHeight; }
-    }
-    
+
     private void setTextPane()
     {
         // Create a test text field with border.
@@ -66,54 +85,54 @@ public class GuiCalc extends JFrame{
         queryField.setFont(new Font(Font.SANS_SERIF, Font.PLAIN, 16));
         queryField.setHorizontalAlignment(JTextField.RIGHT);
         queryField.setEditable(false);
-        
+
         JTextField resultField = new JTextField();
         resultField.setText("Result");
         //resultField.setBorder(BorderFactory.createLineBorder(Color.BLUE, 2));
         resultField.setFont(new Font(Font.SANS_SERIF, Font.PLAIN, 24));
         resultField.setHorizontalAlignment(JTextField.RIGHT);
         resultField.setEditable(false);
-        
+
         // Set our panes.
         JPanel controlPane = new JPanel(new BorderLayout());
         controlPane.add(queryField, BorderLayout.NORTH);
         controlPane.add(resultField, BorderLayout.SOUTH);
-        
+
         this.add(controlPane, BorderLayout.NORTH);
     }
-    
+
     private void setButtonPane()
     {
-        
+
     }
-    
+
     private void setExtendedPane()
     {
-        
+
     }
-    
-    public GuiCalc(){      
+
+    public GuiCalc(){
         try{
             UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
         } catch(Exception e){
             throw new RuntimeException("Can't set up Look And Feel!!!");
         }
-        
+
         setTitle("JBigNums Calculator");
         setLocation(100+frameCount*20, 100+frameCount*20);
         setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE);
         //setSize(mode.width(), mode.height());
         //this.setResizable(false);
-        
+
         // Set layout manager.
         getContentPane().setLayout(new BorderLayout());
-        
+
         // Show confirm message on X press.
         addWindowListener(new WindowAdapter() {
             @Override
             public void windowClosing(WindowEvent windowEvent) {
-                if (JOptionPane.showConfirmDialog(GuiCalc.this , 
-                    "Are you sure to close this window?", "Really Closing?", 
+                if (JOptionPane.showConfirmDialog(GuiCalc.this ,
+                    "Are you sure to close this window?", "Really Closing?",
                     JOptionPane.YES_NO_OPTION,
                     JOptionPane.QUESTION_MESSAGE) == JOptionPane.YES_OPTION)
                 {
@@ -122,173 +141,77 @@ public class GuiCalc extends JFrame{
                 }
             }
         });
-        
+
         setJMenuBar(new GuiCalcMenuBar(this).getMenuBar());
-        
+
         setTextPane();
         setButtonPane();
         setExtendedPane();
-        
+
         ImageIcon icon = new ImageIcon(GuiCalc.class.getResource("/kawaii2.png")); //Our kawaii girl
-        
+
         JLabel label = new JLabel(icon);
         JPanel kawaiiPanel = new JPanel();
         kawaiiPanel.add(label);
-        
+
         kawaiiPanel.addComponentListener(new ComponentAdapter() {
             @Override
             public void componentResized(ComponentEvent e) {
-                Image newimg = icon.getImage().getScaledInstance(kawaiiPanel.getWidth(), kawaiiPanel.getHeight(), java.awt.Image.SCALE_SMOOTH); // scale it the smooth way  
+                Image newimg = icon.getImage().getScaledInstance(kawaiiPanel.getWidth(), kawaiiPanel.getHeight(), java.awt.Image.SCALE_SMOOTH); // scale it the smooth way
                 label.setIcon(new ImageIcon(newimg));  // transform it back
             }
         });
-        
+
         add(kawaiiPanel, BorderLayout.CENTER);
-        
+
         pack();
-        
+
         frameCount++;
     }
-    
+
     public GuiCalcState getCalcState(){
         return cs;
     }
-    
+
     public void updateView()
     {
-        
+
     }
-    
-    
+
     public static String getHelpMessage()
     {
         return "Use calculator by pressing buttons or typing in query field.";
     }
-    
+
     public static String getAboutMessage()
     {
         return "GuiCalc "+GuiCalc.VERSION+". JBigNums "+JBigNums.VERSION+". Made by GrylloTron.";
     }
 }
 
-class GuiCalcMenuBar implements ActionListener
-{    
-    private final JMenuBar mubar;
+class GuiCalcMenuBarListener implements ActionListener
+{
     private final GuiCalc ginst;
-    
-    public GuiCalcMenuBar(GuiCalc theInst)
+
+    public GuiCalcMenuBarListener(GuiCalc theInst)
     {
-        mubar = new JMenuBar();
         ginst = theInst;
-        populateMenuBar(theInst.getCalcState());
     }
-            
-    private void populateMenuBar(GuiCalcState cs)
-    {
-    // View Menu.
-        JMenu menu = new JMenu("View");
-        menu.setMnemonic(KeyEvent.VK_V);
-        mubar.add(menu);
 
-        //Modes
-        ButtonGroup group = new ButtonGroup();
-        
-        JRadioButtonMenuItem rbMenuItem = new JRadioButtonMenuItem("Normal Mode");
-        rbMenuItem.setSelected(cs.getCalcMode()==GuiCalc.CalcMode.NORMAL);
-        rbMenuItem.setMnemonic(KeyEvent.VK_N);
-        rbMenuItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_1, ActionEvent.ALT_MASK));
-        rbMenuItem.setActionCommand("MenuBar_View_NormalMode");
-        rbMenuItem.addActionListener(this);
-        group.add(rbMenuItem);
-        menu.add(rbMenuItem);
-
-        rbMenuItem = new JRadioButtonMenuItem("Scientific Mode");
-        rbMenuItem.setSelected(cs.getCalcMode()==GuiCalc.CalcMode.SCIENTIFIC);
-        rbMenuItem.setMnemonic(KeyEvent.VK_S);
-        rbMenuItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_2, ActionEvent.ALT_MASK));
-        rbMenuItem.setActionCommand("MenuBar_View_ScientificMode");
-        rbMenuItem.addActionListener(this);
-        group.add(rbMenuItem);
-        menu.add(rbMenuItem);
-
-        //a group of check box menu items
-        menu.addSeparator();
-        
-        JCheckBoxMenuItem cbMenuItem = new JCheckBoxMenuItem("Typed Input");
-        cbMenuItem.setSelected(cs.canTypeInQuery.get());
-        cbMenuItem.setMnemonic(KeyEvent.VK_T);
-        cbMenuItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_T, ActionEvent.ALT_MASK));
-        cbMenuItem.setActionCommand("View_TypedInput");
-        cbMenuItem.addActionListener(this);
-        menu.add(cbMenuItem);
-
-        // Other modes (Conversion, etc)
-        menu.addSeparator();
-        
-        cbMenuItem = new JCheckBoxMenuItem("Conversion&Stuff");
-        cbMenuItem.setSelected(cs.isConversionMode.get());
-        cbMenuItem.setMnemonic(KeyEvent.VK_O);
-        cbMenuItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_O, ActionEvent.ALT_MASK));
-        cbMenuItem.setActionCommand("View_Conversion");
-        cbMenuItem.addActionListener(this);
-        menu.add(cbMenuItem);
-        
-    // Edit menu
-        menu = new JMenu("Edit");
-        menu.setMnemonic(KeyEvent.VK_E);
-        mubar.add(menu);
-        
-        JMenuItem menuItem = new JMenuItem("Copy");
-        menuItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_C, ActionEvent.CTRL_MASK));
-        menuItem.setActionCommand("Edit_Copy");
-        menuItem.addActionListener(this);
-        menu.add(menuItem);
-        
-        menuItem = new JMenuItem("Paste");
-        menuItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_V, ActionEvent.CTRL_MASK));
-        menuItem.setActionCommand("Edit_Paste");
-        menuItem.addActionListener(this);
-        menu.add(menuItem);
-        
-        menuItem = new JMenuItem("View History", KeyEvent.VK_H);
-        menuItem.setActionCommand("Edit_History");
-        menuItem.addActionListener(this);
-        menu.add(menuItem);
-        
-    // Help Menu
-        menu = new JMenu("Help");
-        menu.setMnemonic(KeyEvent.VK_H);
-        mubar.add(menu);
-        
-        menuItem = new JMenuItem("View Help", KeyEvent.VK_E);
-        menuItem.setActionCommand("Help_Help");
-        menuItem.addActionListener(this);
-        menu.add(menuItem);
-        
-        menuItem = new JMenuItem("About");
-        menuItem.setActionCommand("Help_About");
-        menuItem.addActionListener(this);
-        menu.add(menuItem);
-    }
-    
-    public JMenuBar getMenuBar()
-    {
-        return mubar;
-    }
-    
+    // Default Action Listen0r
     @Override
     public void actionPerformed(ActionEvent e)
     {
         switch(e.getActionCommand())
         {
-            case "MenuBar_View_NormalMode":
+            case "View_NormalMode":
                 JOptionPane.showMessageDialog(null, "Normal Mode selected.", "InfoBox", JOptionPane.INFORMATION_MESSAGE);
-                ginst.getCalcState().setCalcMode(GuiCalc.CalcMode.NORMAL);
+                ginst.getCalcState().setCalcMode(CalcMode.NORMAL);
                 ginst.updateView();
                 break;
-            case "MenuBar_View_ScientificMode":
+            case "View_ScientificMode":
                 JOptionPane.showMessageDialog(null, "Scientific Mode selected.", "InfoBox", JOptionPane.INFORMATION_MESSAGE);
-                ginst.getCalcState().setCalcMode(GuiCalc.CalcMode.SCIENTIFIC);
+                ginst.getCalcState().setCalcMode(CalcMode.SCIENTIFIC);
                 ginst.updateView();
                 break;
             case "View_TypedInput":
