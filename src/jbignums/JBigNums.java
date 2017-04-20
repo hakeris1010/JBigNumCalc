@@ -7,7 +7,6 @@
 package jbignums;
 
 import jbignums.CalcDesigns.JGUI_SimpleCalculator;
-import jbignums.CalcDesigns.JetBrainsGUIDesign;
 import jbignums.GuiCalc.GuiCalc;
 
 /**
@@ -20,7 +19,7 @@ class CalcManager
     // Encapsulated GUI calculator object
     private GuiCalc gcalc;
     // Default GUI Design Layout.
-    private final JetBrainsGUIDesign defDesign = new JGUI_SimpleCalculator();
+    private final JGUI_SimpleCalculator defDesign = new JGUI_SimpleCalculator();
     
     public void start()
     {

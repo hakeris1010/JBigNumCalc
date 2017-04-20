@@ -5,15 +5,10 @@
  */
 package jbignums.GuiCalc;
 
-import jbignums.CalcDesigns.GuiCalcMenu;
-import jbignums.CalcDesigns.JGUI_SimpleCalculator;
-import jbignums.CalcDesigns.SwingGUIDesign;
+import jbignums.CalcProperties.GuiCalcState;
 import jbignums.JBigNums;
 import java.awt.*;
-import java.awt.datatransfer.*;
 import java.awt.event.*;
-import java.util.ArrayList;
-import java.util.concurrent.atomic.AtomicBoolean;
 import javax.swing.*;
 
 /**
@@ -21,58 +16,10 @@ import javax.swing.*;
  * @author Kestutis
  */
 
-class DefaultGUICalc {
-    static public final CalcMode calcMode = CalcMode.NORMAL;
-    static public final Class menuBar = GuiCalcMenu.class;
-}
-
-class GuiCalcState //Thread-safe.
-{
-    public CalcModeState modeState;
-
-    private String query;
-    private ArrayList<String> queryHistory;
-
-    // Getters, setters
-
-    public synchronized String getQuery(){ return query; }
-    public synchronized void setQuery(String qu){ query = qu; }
-
-    public synchronized ArrayList<String> getQueryHistory(){ return queryHistory; }
-    public synchronized void setQueryHistory(ArrayList<String> qu){ queryHistory = qu; }
-}
-
-class CalcModeState
-{
-    private CalcMode currentMode;
-
-}
-
-enum CalcMode {
-    NORMAL (300, 400, JGUI_SimpleCalculator.class),
-    SCIENTIFIC (600, 400, JGUI_SimpleCalculator.class);
-
-    // Private parts
-    private final int mWidth;
-    private final int mHeight;
-    private Class design;
-
-    CalcMode(int w, int h, Class designClass){
-        if(designClass != SwingGUIDesign.class)
-            throw new RuntimeException("Layout class is now implementing a SwingGUIDesign interface");
-
-        mWidth = w;
-        mHeight = h;
-        design = designClass;
-    }
-    public int width(){ return mWidth; }
-    public int height(){ return mHeight; }
-    public Class getDesign(){ return design; }
-}
-
-public class GuiCalc extends JFrame{
+public class GuiCalc {
     public static final String VERSION = "v0.1";
 
+    private JFrame frame;
     private static int frameCount=0;
     private final GuiCalcState cs = new GuiCalcState();
 
@@ -189,61 +136,3 @@ public class GuiCalc extends JFrame{
     }
 }
 
-class GuiCalcMenuBarListener implements ActionListener
-{
-    private final GuiCalc ginst;
-
-    public GuiCalcMenuBarListener(GuiCalc theInst)
-    {
-        ginst = theInst;
-    }
-
-    // Default Action Listen0r
-    @Override
-    public void actionPerformed(ActionEvent e)
-    {
-        switch(e.getActionCommand())
-        {
-            case "View_NormalMode":
-                JOptionPane.showMessageDialog(null, "Normal Mode selected.", "InfoBox", JOptionPane.INFORMATION_MESSAGE);
-                ginst.getCalcState().setCalcMode(CalcMode.NORMAL);
-                ginst.updateView();
-                break;
-            case "View_ScientificMode":
-                JOptionPane.showMessageDialog(null, "Scientific Mode selected.", "InfoBox", JOptionPane.INFORMATION_MESSAGE);
-                ginst.getCalcState().setCalcMode(CalcMode.SCIENTIFIC);
-                ginst.updateView();
-                break;
-            case "View_TypedInput":
-                ginst.getCalcState().canTypeInQuery.set(true);
-                ginst.updateView();
-                break;
-            case "View_Conversion":
-                ginst.getCalcState().isConversionMode.set(true);
-                ginst.updateView();
-                break;
-            case "Edit_Copy":
-                try{
-                    StringSelection stringSelection = new StringSelection(ginst.getCalcState().getQuery());
-                    Clipboard clpbrd = Toolkit.getDefaultToolkit().getSystemClipboard();
-                    clpbrd.setContents(stringSelection, null);
-                } catch (Exception ex){ 
-                    JOptionPane.showMessageDialog(null, "Can't put to clipboard.", "Error", JOptionPane.ERROR_MESSAGE); 
-                }
-                break;
-            case "Edit_Paste":
-                /*clpbrd = Toolkit.getDefaultToolkit().getSystemClipboard();
-                Transferable tr = clpbrd.getContents(null);*/
-                break;
-            case "Edit_History":
-                JOptionPane.showMessageDialog(null, ginst.getCalcState().getQueryHistory(), "History", JOptionPane.INFORMATION_MESSAGE);
-                break;
-            case "Help_Help":
-                JOptionPane.showMessageDialog(null, GuiCalc.getHelpMessage(), "Help", JOptionPane.INFORMATION_MESSAGE);
-                break;
-            case "Help_About":
-                JOptionPane.showMessageDialog(null, GuiCalc.getAboutMessage(), "About", JOptionPane.INFORMATION_MESSAGE);
-                break;
-        }
-    }
-}
