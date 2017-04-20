@@ -64,6 +64,7 @@ public class JGUI_SimpleCalculator implements GUIDesignLayout {
      * @param cState - calculator State, which will signal events.
      */
     public JGUI_SimpleCalculator(GuiCalcState cState) {
+
         // Set the State pointer. We will use this to signal Main about events.
         state = cState;
 
