@@ -8,20 +8,20 @@ public class GuiCalcProps {
     /**
      *  All the general GUI defaults.
      */
-    static class Defaults {
+    public static class Defaults {
         // Default Menu Bar (Controlling Other General GUI elements)
         static public final Class menuBar = GuiCalcMenu.class;
 
         // Default General GUI elements
         // The Design Layout
-        static public final CalcMode GuiLayout = CalcMode.NORMAL;
+        static public final CalcLayout GuiLayout = CalcLayout.NORMAL;
         // Input Methods
         static public final boolean TypedInput = false;
 
         // Other defaults are dependent to their GUILayouts.
     }
 
-    enum CalcMode {
+    public enum CalcLayout {
         NORMAL (300, 400, JGUI_SimpleCalculator.class),
         SCIENTIFIC (600, 400, JGUI_SimpleCalculator.class);
 
@@ -30,7 +30,7 @@ public class GuiCalcProps {
         private final int mHeight;
         private Class design;
 
-        CalcMode(int w, int h, Class designClass){
+        CalcLayout(int w, int h, Class designClass){
             // Check if passed class is a subclass of GUIDesignLayout.
             if( ! GUIDesignLayout.class.isAssignableFrom(designClass) )
                 throw new RuntimeException("Layout class is now implementing a GUIDesignLayout interface");
@@ -43,4 +43,5 @@ public class GuiCalcProps {
         public int height(){ return mHeight; }
         public Class getDesign(){ return design; }
     }
+
 }

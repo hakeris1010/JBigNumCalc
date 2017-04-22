@@ -1,5 +1,6 @@
 package jbignums.CalcDesigns;
 
+import jbignums.CalcProperties.GuiCalcProps;
 import jbignums.CalcProperties.GuiCalcState;
 import jbignums.GuiCalc.GuiCalc;
 
@@ -22,7 +23,9 @@ import java.util.ArrayList;
  *  - TODO:
  *      Don't stick with only 1 Menu class implementing everything:
  *      Create this design:
- *      - All interested GUI Components (e.g. GUIDesignLayout's) define their own list of
+ *      - All interested GUI Components (e.g. GUIDesignLayout's) define their own list of GUIMenu.MenuItems,
+ *          all of them WITH THEIR OWN registered EventListeners. This way Event Handling code can be related only
+ *          to the items interested.
  */
 
 public class GuiCalcMenu implements GUIMenu {
@@ -46,6 +49,7 @@ public class GuiCalcMenu implements GUIMenu {
         // Search for "Name" in JMenus list, and add the item to the appropriate menu.
     }
 
+    @Deprecated
     private void populateMenuBar()
     {
         // View Menu.
@@ -138,6 +142,8 @@ public class GuiCalcMenu implements GUIMenu {
     }
 }
 
+// These listeners must be invoked on the EDT Thread.
+@Deprecated
 class GuiCalcMenuBarListener implements ActionListener
 {
     private GuiCalcState calcState;
@@ -154,11 +160,11 @@ class GuiCalcMenuBarListener implements ActionListener
         {
             case "View_NormalMode":
                 JOptionPane.showMessageDialog(null, "Normal Mode selected.", "InfoBox", JOptionPane.INFORMATION_MESSAGE);
-                //calcState.setCalcMode(CalcMode.NORMAL);
+                calcState.setCalcMode(GuiCalcProps.CalcLayout.NORMAL);
                 break;
             case "View_ScientificMode":
                 JOptionPane.showMessageDialog(null, "Scientific Mode selected.", "InfoBox", JOptionPane.INFORMATION_MESSAGE);
-                //calcState.setCalcMode(CalcMode.SCIENTIFIC);
+                calcState.setCalcMode(GuiCalcProps.CalcLayout.SCIENTIFIC);
                 break;
             case "View_TypedInput":
                 //calcState.canTypeInQuery.set(true);
