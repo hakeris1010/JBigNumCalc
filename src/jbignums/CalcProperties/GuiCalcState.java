@@ -31,10 +31,12 @@ public class GuiCalcState //Thread-safe.
      * Private properties defining current state and other stuff.
      */
 
+    //=========    Core   ==========//
     // Event listeners, listening on EDT.
     private ArrayList<ActionListener> EDTlisteners;
     //private ArrayList<ActionListener> otherListeners;
 
+    //========= Calculator =========//
     // Added Calculators
     private ArrayList<StringCalculator> calculators;
 
@@ -43,11 +45,12 @@ public class GuiCalcState //Thread-safe.
     private ArrayList<String> queryHistory;
     private Queue<String> pendingQueries;
 
+    //========= GUI Layouts ==========//
     // GUI Layout and CalcModes
     private GuiCalcProps.CalcLayout currentGuiLayout;
 
-
-    /**
+    /** ============= Core Methods ============
+     *
      * Add a new event listener to be executed on the EDT thread.
      * @param list
      */
@@ -77,7 +80,10 @@ public class GuiCalcState //Thread-safe.
         }
     }
 
-    // CalcLayout setter 'n' getter
+    /** ============ Property Manipulation Methods ============
+     * Sets the new GUI Layout, and fires "LayoutChanged" event to all attached listeners.
+     * @param newLayout - new GUI layout object
+     */
     public synchronized void setCalcLayout(GuiCalcProps.CalcLayout newLayout){
         currentGuiLayout = newLayout;
         // Fire a "Layout Changed" event.
@@ -98,16 +104,30 @@ public class GuiCalcState //Thread-safe.
      *   intermediate results.
      * @param calcExpr - expression written in the GrylCalc language.
      */
+    public synchronized void launchNewCalculationTask(String calcExpr){
+        // Launch with default ID: 0
+        launchNewCalculationTask(calcExpr, 0);
+    }
     public synchronized void launchNewCalculationTask(String calcExpr, int calcID){
         if(calcID < 0 || calcID >= calculators.size())
             throw new RuntimeException("Wrong index specified on launchNewCalculationTask()");
 
         StringCalculator calc = calculators.get(calcID);
-        //
+
+        // Launch calculation in new separate thread, and get intermediate results on this thread.
         new Thread( () -> {
+            // The calculation spins in this worker, no other thread are directly affected.
             calc.startCalculation( calcExpr, 0 );
         } ).start();
 
+        // Get intermediate results in a loop.
+        while(true){
+            StringCalculator.Result res = calc.getWaitIntermediateResult();
+            // Check if End Result
+            if( (res.resultType & StringCalculator.ResultType.END) == StringCalculator.ResultType.END){
+                raiseEvent_OnEventDispatchThread( new ActionEvent(this, ActionEvent.ACTION_PERFORMED, CALC_DONE) );
+            }
+        }
     }
 
     /*public synchronized String getQuery(){ return query; }
