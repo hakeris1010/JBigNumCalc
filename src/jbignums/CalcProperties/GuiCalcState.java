@@ -1,5 +1,6 @@
 package jbignums.CalcProperties;
 
+import jbignums.CalcDesigns.GUIMenu;
 import jbignums.StringCalculator.StringCalculator;
 
 import javax.swing.*;
@@ -10,6 +11,7 @@ import java.io.PipedOutputStream;
 import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
@@ -103,6 +105,7 @@ public class GuiCalcState //Thread-safe.
      * The Thread Pool in which all calculation tasks will be done.
      */
     private final ExecutorService calcThreadPool = Executors.newFixedThreadPool(MAX_CALC_THREADS);
+    private final Thread ControlThread;
     /**
      * Currently working states contained in a Set - no duplicates.
      */
@@ -130,7 +133,7 @@ public class GuiCalcState //Thread-safe.
          * This thread polls all of the tasks in ThreadPool for intermediate (or final) results,
          * takes them from queues, and fires appropriate events to the attached listeners on EDT.
          */
-        new Thread( () -> {
+        ControlThread = new Thread( () -> {
             while(!needToShutDown.get()){
                 // If no data available on queues, wait until notified.
                 synchronized (queueDataPendingCondVar) {
@@ -164,7 +167,8 @@ public class GuiCalcState //Thread-safe.
                     }
                 }
             }
-        } ).start();
+        } );
+        ControlThread.start();
     }
 
     /** ============= Core Methods ============
@@ -223,6 +227,15 @@ public class GuiCalcState //Thread-safe.
     }
 
     /**
+     * Sets the current menu
+     * @param menu - GUIMenu class object.
+     */
+    public synchronized void setGuiMenu(GUIMenu menu){
+        // TODO: Menu must be final.
+    }
+    public synchronized GUIMenu getGuiMenu(){ return currentGuiMenu; }
+
+    /**
      * Function starts a new calculation on a specified calculator with a specified expression.
      * - A job could be done on a SwingWorker, but it seems it's easier to do it using standard Runnables and
      *   a BlockingQueue for checking the intermediate results.
@@ -231,11 +244,13 @@ public class GuiCalcState //Thread-safe.
      *   intermediate results.
      * @param calcExpr - expression written in the GrylCalc language.
      */
-    public synchronized void launchNewCalculationTask(String calcExpr){
+    public void launchNewCalculationTask(String calcExpr){
         // Launch with default ID: 0
         launchNewCalculationTask(calcExpr, 0);
     }
     public synchronized void launchNewCalculationTask(String calcExpr, int calcID){
+        if(needToShutDown.get())
+            return;
         if(calcID < 0 || calcID >= calculatorClasses.size())
             throw new RuntimeException("Wrong index specified on launchNewCalculationTask()");
         // Create a new instance of a Calculator of given class.
@@ -253,6 +268,36 @@ public class GuiCalcState //Thread-safe.
         // Put the new Instance to execution! When it starts executing, new State will be added to list,
         // And the Control Thread will be able to check on it.
         calcThreadPool.execute( new CalculatorInstance(cs, calcExpr) );
+    }
+
+    /**
+     * Function sets the Shutdown flag to signal all threads to start termination,
+     * and sets the ThreadPool to not accept any new tasks.
+     */
+    public synchronized void postQuitMessage(){
+        needToShutDown.set(true);
+        calcThreadPool.shutdown();
+    }
+
+    /**
+     * Function waits for all tasks to finish.
+     * @param postQuitMsg - if set, posts Quit message before waiting.
+     */
+    public void waitForTasksEnd(boolean postQuitMsg){
+        if(postQuitMsg)
+            postQuitMessage();
+        // Post a shutdown request to the worker pool, and wait.
+        try {
+            calcThreadPool.awaitTermination(5, TimeUnit.SECONDS);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+        // Join the control thread.
+        try {
+            ControlThread.join();
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
     }
 
     /*public synchronized String getQuery(){ return query; }

@@ -59,8 +59,7 @@ public class JGUI_SimpleCalculator implements GUIDesignLayout {
     /**
      * Constructors. We have basic one and with State param.
      */
-    public JGUI_SimpleCalculator() {
-    }
+    public JGUI_SimpleCalculator() { }
 
     public JGUI_SimpleCalculator(GuiCalcState cState) {
         create(cState);
@@ -124,14 +123,11 @@ public class JGUI_SimpleCalculator implements GUIDesignLayout {
 
         // ActionListener for all buttons. They all fire ActionCommands.
         // We define this AnonClass, and then we'll add it to every button.
-        ActionListener buttList = new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent actionEvent) {
-                switch (actionEvent.getActionCommand()) {
-                    case "MC":
-                        break;
-                    // And all others.
-                }
+        ActionListener buttList = (ActionEvent actionEvent) -> {
+            switch (actionEvent.getActionCommand()) {
+                case "MC":
+                    break;
+                // And all others.
             }
         };
 
