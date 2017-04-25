@@ -1,11 +1,14 @@
 package jbignums.CalcDesigns;
 
+import jbignums.CalcProperties.GuiCalcState;
+
 import javax.swing.*;
 
 /**
  *  Basic interface for all Gui Designs
  */
 public interface GUIDesignLayout {
-    public JPanel getRootContentPanel();
+    void create(GuiCalcState state);
+    JPanel getRootContentPanel();
 }
 

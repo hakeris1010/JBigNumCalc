@@ -1,5 +1,7 @@
 package jbignums.CalcDesigns;
 
+import jbignums.CalcProperties.GuiCalcState;
+
 import javax.swing.*;
 import java.awt.event.KeyEvent;
 /**
@@ -52,6 +54,7 @@ public interface GUIMenu {
     }
 
     // Functions to-be implemented.
+    void create(GuiCalcState state);
     JMenuBar getMenuBar();
     void addMenuItem(MenuItem item);
 }

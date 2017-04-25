@@ -30,16 +30,22 @@ import java.util.ArrayList;
 
 public class GuiCalcMenu implements GUIMenu {
     JMenuBar mubar;
-    ArrayList<JMenu> menus;
+    ArrayList<JMenu> menus = new ArrayList<>();
     ActionListener actl;
 
     // Dynamically construct the new menu
-    public GuiCalcMenu(GuiCalcState state)
-    {
+    public GuiCalcMenu(){ }
+    public GuiCalcMenu(GuiCalcState state) {
+        create(state);
+    }
+
+    @Override
+    public void create(GuiCalcState state){
         actl = new GuiCalcMenuBarListener(state);
         populateMenuBar();
     }
 
+    @Override
     public JMenuBar getMenuBar() {
         return mubar;
     }
@@ -52,6 +58,7 @@ public class GuiCalcMenu implements GUIMenu {
     @Deprecated
     private void populateMenuBar()
     {
+        mubar = new JMenuBar();
         // View Menu.
         JMenu menu = new JMenu("View");
         menu.setMnemonic(KeyEvent.VK_V);

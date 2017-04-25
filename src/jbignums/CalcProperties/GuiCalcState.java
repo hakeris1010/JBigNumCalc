@@ -97,7 +97,7 @@ public class GuiCalcState //Thread-safe.
     /**
      * Added Gui-Compatible Calculator Objects.
      */
-    private ArrayList<Class> calculatorClasses;
+    private ArrayList<Class> calculatorClasses = new ArrayList<>();
 
     /**
      * The Thread Pool in which all calculation tasks will be done.
@@ -120,10 +120,10 @@ public class GuiCalcState //Thread-safe.
     /** ============ Initialization ===========
      * Launch control thread and initialize variables in a constructor.
      */
-    public GuiCalcState()
+    //public GuiCalcState()
     {
         // At first, add the basic ID=0 calculator to the array.
-        calculatorClasses.add(StringCalculator.class);
+        calculatorClasses.add(StringCalculator.class.getClass());
 
         /**
          * Create and Launch the Task Control thread.
@@ -133,11 +133,13 @@ public class GuiCalcState //Thread-safe.
         new Thread( () -> {
             while(!needToShutDown.get()){
                 // If no data available on queues, wait until notified.
-                while(!queueDataPendingCondVar.get() && !needToShutDown.get()) {
-                    try {
-                        queueDataPendingCondVar.wait();
-                    } catch (InterruptedException e) {
-                        e.printStackTrace();
+                synchronized (queueDataPendingCondVar) {
+                    while (!queueDataPendingCondVar.get() && !needToShutDown.get()) {
+                        try {
+                            queueDataPendingCondVar.wait();
+                        } catch (InterruptedException e) {
+                            e.printStackTrace();
+                        }
                     }
                 }
                 if(needToShutDown.get()) break;

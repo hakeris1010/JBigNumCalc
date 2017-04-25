@@ -24,16 +24,22 @@ public class GuiCalc {
 
     private JFrame frame;
     static private int frameCount  = 0;
+    GuiCalcState cs;
 
-    public GuiCalc(){
-        setupAndShowGui();
-        frameCount++;
+    public GuiCalc(boolean createGui) {
+        if (createGui) {
+            setupAndShowGui();
+            frameCount++;
+        }
     }
 
     public void setupAndShowGui(){
         // Setup GUI. Everything must be done on EDT thread, so use "invokeLater"
 
         SwingUtilities.invokeLater( () -> {
+            // Create a Frame and GuiCalcState.
+            frame = new JFrame();
+            cs = new GuiCalcState();
             // Set the default Look and Feel for this layout.
             try{
                 UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
@@ -48,9 +54,10 @@ public class GuiCalc {
             //this.setResizable(false);
 
             // Set layout manager.
-            GUIDesignLayout newLayout = null;
+            GUIDesignLayout newLayout;
             try {
-                newLayout = (GUIDesignLayout)( GuiCalcProps.Defaults.GuiLayout.getDesign().newInstance() );
+                newLayout = (GUIDesignLayout) ( GuiCalcProps.Defaults.GuiLayout.getDesign().newInstance() );
+                newLayout.create(cs);
             } catch (Exception e) {
                 System.out.println("Can't get Gui Layout!");
                 e.printStackTrace();
@@ -74,17 +81,19 @@ public class GuiCalc {
                 }
             });
 
-            GUIMenu newMenu = null;
+            GUIMenu newMenu;
             try {
                 newMenu = (GUIMenu)( GuiCalcProps.Defaults.menuBar.newInstance() );
+                newMenu.create(cs);
             } catch (Exception e) {
                 System.out.println("Can't get Gui Layout!");
                 e.printStackTrace();
                 return;
             }
-            frame.setJMenuBar(newMenu.getMenuBar());
 
+            frame.setJMenuBar(newMenu.getMenuBar());
             frame.pack();
+            frame.setVisible(true);
         } );
     }
 
