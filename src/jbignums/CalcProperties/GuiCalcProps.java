@@ -11,7 +11,6 @@ public class GuiCalcProps {
     public static class Defaults {
         // Default Menu Bar (Controlling Other General GUI elements)
         static public final Class menuBar = GuiCalcMenu.class;
-
         // Default General GUI elements
         // The Design Layout
         static public final CalcLayout GuiLayout = CalcLayout.NORMAL;

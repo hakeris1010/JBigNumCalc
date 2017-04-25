@@ -160,11 +160,11 @@ class GuiCalcMenuBarListener implements ActionListener
         {
             case "View_NormalMode":
                 JOptionPane.showMessageDialog(null, "Normal Mode selected.", "InfoBox", JOptionPane.INFORMATION_MESSAGE);
-                calcState.setCalcMode(GuiCalcProps.CalcLayout.NORMAL);
+                //calcState.setCalcMode(GuiCalcProps.CalcLayout.NORMAL);
                 break;
             case "View_ScientificMode":
                 JOptionPane.showMessageDialog(null, "Scientific Mode selected.", "InfoBox", JOptionPane.INFORMATION_MESSAGE);
-                calcState.setCalcMode(GuiCalcProps.CalcLayout.SCIENTIFIC);
+                //calcState.setCalcMode(GuiCalcProps.CalcLayout.SCIENTIFIC);
                 break;
             case "View_TypedInput":
                 //calcState.canTypeInQuery.set(true);

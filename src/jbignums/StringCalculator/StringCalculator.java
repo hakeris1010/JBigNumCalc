@@ -1,7 +1,10 @@
 package jbignums.StringCalculator;
 
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  *  A Calculator designed to work concurrently.
@@ -42,20 +45,18 @@ public abstract class StringCalculator{
             resultType = rtp;
         }
     }
-    public class IntermediateResult extends Result {
-        public IntermediateResult(double d, ArrayList<String> ar, DataType dtp, int rtp){
-            super(d, ar, dtp, rtp);
-        }
-    }
 
     /**
      * Private fields
      */
-    protected Result lastResult;
-    protected boolean stillCalculating = false;
-
     protected String calcExpression;
-    protected int calcMode;
+    protected volatile int calcMode;
+    protected Result lastResult;
+    protected volatile boolean stillCalculating = false;
+
+    // Lists of Variables for communicating and notifying other threads
+    protected final List<AtomicBoolean> terminators = Collections.synchronizedList( new ArrayList<>() );
+    protected final List<AtomicBoolean> queueSignalers = Collections.synchronizedList( new ArrayList<>() );
 
     // TODO: Use this to check for deadlocks, so that blocking functions could not be called from Worker threads.
     protected long[] workerThreadIDS;
@@ -65,6 +66,16 @@ public abstract class StringCalculator{
      */
     protected final static int QUEUE_MAX = 16;
     protected final LinkedBlockingQueue<Result> resultQueue = new LinkedBlockingQueue<>(QUEUE_MAX);
+
+    /**
+     * Constructors
+     */
+    public StringCalculator(){ }
+    public StringCalculator(AtomicBoolean terminatingVariable, AtomicBoolean queueSignalVariable, int calculationMode){
+        terminators.add( terminatingVariable );
+        queueSignalers.add( queueSignalVariable );
+        calcMode = calculationMode;
+    }
 
     /**
      * Start the calculation SYNCHRONOUSLY. Blocks the calling thread until completed.
@@ -77,7 +88,7 @@ public abstract class StringCalculator{
      * @param expression - String representation of CalcExpression, e.g. "2+2" or "sqrt(1)"
      * @param mode - Not yet implemented. Pass 0.
      */
-    public synchronized void startCalculation(String expression, int mode){
+    public void startCalculation(String expression, int mode){
         assignExpression(expression, mode);
         startCalculation();
     }
@@ -95,11 +106,14 @@ public abstract class StringCalculator{
 
         // Perform actual calculation there.
 
+        Result datLastRes = new Result(1.0, null, DataType.DEFAULT, ResultType.END);
+
         // Push end result to queue. When taken and checked and determined END, the caller will exit it's LooP.
         // No syncing is needed, because BlockingQueue is thread-safe.
-        resultQueue.add(new Result(1.0, null, DataType.DEFAULT, ResultType.END));
+        resultQueue.add( datLastRes );
 
         synchronized (this) {
+            lastResult = datLastRes;
             stillCalculating = false;
             this.notifyAll(); // Notify all waiters that calculatione is done.
         }
@@ -125,14 +139,6 @@ public abstract class StringCalculator{
                         e.printStackTrace();
                     }
                 }
-                /*
-                // Get result from Results Queue, blocking until present. As we're in a While Loop, we check
-                // if calculation is still going.
-                Result res = getWaitIntermediateResult();
-                // Check the End Flag Bit
-                if((res.resultType & ResultType.END) == ResultType.END){
-                    return res;
-                }*/
             }
             // If stillCalculating became false, it means the "lastResult" is assigned with the final result.
         }
@@ -151,7 +157,10 @@ public abstract class StringCalculator{
      * Block the thread until new value is present on Queue.
      */
     public synchronized Result getWaitIntermediateResult(){
-        // TODO: Check if caller is not "this" to prevent DeadLock.
+        if(!stillCalculating) // Calculation is not happening at this moment.
+            return lastResult;
+
+        // TODO: Also check if caller is not "this" to prevent DeadLock.
         // Return the top of queue, and check for exception if interrupted.
         try {
             return resultQueue.take();
@@ -160,8 +169,31 @@ public abstract class StringCalculator{
         }
         return null;
     }
+    public synchronized Result getIntermediateResultIfPending(){
+        if( !resultQueue.isEmpty() ) {
+            try {
+                return resultQueue.take();
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }
+        return null;
+    }
 
     public synchronized boolean isResultPending(){
         return !(resultQueue.isEmpty());
     }
+
+    /**
+     * Set the variable by which we'll signal the calculator to end work.
+      * @param termvar - AtomicBoolean working as a terminator.
+     */
+    public synchronized void addTerminatingVariable(AtomicBoolean termvar){ terminators.add(termvar); }
+    /**
+     * Set the variable which acts as a Condition Variable for notifying if data is pending on Results Queue.
+     * @param signalvar
+     */
+    public synchronized void addQueueSignalVariable(AtomicBoolean signalvar){ queueSignalers.add(signalvar); }
+
 }
+

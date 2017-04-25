@@ -5,6 +5,9 @@
  */
 package jbignums.GuiCalc;
 
+import jbignums.CalcDesigns.GUIDesignLayout;
+import jbignums.CalcDesigns.GUIMenu;
+import jbignums.CalcProperties.GuiCalcProps;
 import jbignums.CalcProperties.GuiCalcState;
 import jbignums.JBigNums;
 import java.awt.*;
@@ -20,109 +23,69 @@ public class GuiCalc {
     public static final String VERSION = "v0.1";
 
     private JFrame frame;
-    private static int frameCount=0;
-    private final GuiCalcState cs = new GuiCalcState();
-
-    private void setTextPane()
-    {
-        // Create a test text field with border.
-        JTextField queryField = new JTextField();
-        queryField.setText("Nyaa, kawaii desu~~");
-        //queryField.setBorder(BorderFactory.createLineBorder(Color.GRAY, 1));
-        queryField.setFont(new Font(Font.SANS_SERIF, Font.PLAIN, 16));
-        queryField.setHorizontalAlignment(JTextField.RIGHT);
-        queryField.setEditable(false);
-
-        JTextField resultField = new JTextField();
-        resultField.setText("Result");
-        //resultField.setBorder(BorderFactory.createLineBorder(Color.BLUE, 2));
-        resultField.setFont(new Font(Font.SANS_SERIF, Font.PLAIN, 24));
-        resultField.setHorizontalAlignment(JTextField.RIGHT);
-        resultField.setEditable(false);
-
-        // Set our panes.
-        JPanel controlPane = new JPanel(new BorderLayout());
-        controlPane.add(queryField, BorderLayout.NORTH);
-        controlPane.add(resultField, BorderLayout.SOUTH);
-
-        this.add(controlPane, BorderLayout.NORTH);
-    }
-
-    private void setButtonPane()
-    {
-
-    }
-
-    private void setExtendedPane()
-    {
-
-    }
+    static private int frameCount  = 0;
 
     public GuiCalc(){
-        try{
-            UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
-        } catch(Exception e){
-            throw new RuntimeException("Can't set up Look And Feel!!!");
-        }
-
-        setTitle("JBigNums Calculator");
-        setLocation(100+frameCount*20, 100+frameCount*20);
-        setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE);
-        //setSize(mode.width(), mode.height());
-        //this.setResizable(false);
-
-        // Set layout manager.
-        getContentPane().setLayout(new BorderLayout());
-
-        // Show confirm message on X press.
-        addWindowListener(new WindowAdapter() {
-            @Override
-            public void windowClosing(WindowEvent windowEvent) {
-                if (JOptionPane.showConfirmDialog(GuiCalc.this ,
-                    "Are you sure to close this window?", "Really Closing?",
-                    JOptionPane.YES_NO_OPTION,
-                    JOptionPane.QUESTION_MESSAGE) == JOptionPane.YES_OPTION)
-                {
-                    if(frameCount>0) frameCount--;
-                    GuiCalc.this.dispose();
-                }
-            }
-        });
-
-        setJMenuBar(new GuiCalcMenuBar(this).getMenuBar());
-
-        setTextPane();
-        setButtonPane();
-        setExtendedPane();
-
-        ImageIcon icon = new ImageIcon(GuiCalc.class.getResource("/kawaii2.png")); //Our kawaii girl
-
-        JLabel label = new JLabel(icon);
-        JPanel kawaiiPanel = new JPanel();
-        kawaiiPanel.add(label);
-
-        kawaiiPanel.addComponentListener(new ComponentAdapter() {
-            @Override
-            public void componentResized(ComponentEvent e) {
-                Image newimg = icon.getImage().getScaledInstance(kawaiiPanel.getWidth(), kawaiiPanel.getHeight(), java.awt.Image.SCALE_SMOOTH); // scale it the smooth way
-                label.setIcon(new ImageIcon(newimg));  // transform it back
-            }
-        });
-
-        add(kawaiiPanel, BorderLayout.CENTER);
-
-        pack();
-
+        setupAndShowGui();
         frameCount++;
     }
 
-    public GuiCalcState getCalcState(){
-        return cs;
-    }
+    public void setupAndShowGui(){
+        // Setup GUI. Everything must be done on EDT thread, so use "invokeLater"
 
-    public void updateView()
-    {
+        SwingUtilities.invokeLater( () -> {
+            // Set the default Look and Feel for this layout.
+            try{
+                UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
+            } catch(Exception e){
+                throw new RuntimeException("Can't set up Look And Feel!!!");
+            }
 
+            frame.setTitle("JBigNums Calculator");
+            frame.setLocation(100+frameCount*20, 100+frameCount*20);
+            frame.setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE);
+            //setSize(mode.width(), mode.height());
+            //this.setResizable(false);
+
+            // Set layout manager.
+            GUIDesignLayout newLayout = null;
+            try {
+                newLayout = (GUIDesignLayout)( GuiCalcProps.Defaults.GuiLayout.getDesign().newInstance() );
+            } catch (Exception e) {
+                System.out.println("Can't get Gui Layout!");
+                e.printStackTrace();
+                return;
+            }
+
+            frame.setContentPane( newLayout.getRootContentPanel() );
+
+            // Show confirm message on X press.
+            frame.addWindowListener(new WindowAdapter() {
+                @Override
+                public void windowClosing(WindowEvent windowEvent) {
+                    if (JOptionPane.showConfirmDialog(frame ,
+                        "Are you sure to close this window?", "Really Closing?",
+                        JOptionPane.YES_NO_OPTION,
+                        JOptionPane.QUESTION_MESSAGE) == JOptionPane.YES_OPTION)
+                    {
+                        if(frameCount>0) frameCount--;
+                        frame.dispose();
+                    }
+                }
+            });
+
+            GUIMenu newMenu = null;
+            try {
+                newMenu = (GUIMenu)( GuiCalcProps.Defaults.menuBar.newInstance() );
+            } catch (Exception e) {
+                System.out.println("Can't get Gui Layout!");
+                e.printStackTrace();
+                return;
+            }
+            frame.setJMenuBar(newMenu.getMenuBar());
+
+            frame.pack();
+        } );
     }
 
     public static String getHelpMessage()

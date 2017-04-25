@@ -5,9 +5,12 @@ import jbignums.StringCalculator.StringCalculator;
 import javax.swing.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
-import java.lang.reflect.Array;
-import java.util.ArrayList;
-import java.util.Queue;
+import java.io.PipedInputStream;
+import java.io.PipedOutputStream;
+import java.util.*;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * Main state class API. The connection between GuiLand and MainLand is managed through this object.
@@ -22,23 +25,88 @@ public class GuiCalcState //Thread-safe.
     /**
      *  The known ActionCommand strings
      */
-    public static final String CALC_PROGRESS_VALUE = "GCS_Calc_Progress";
-    public static final String CALC_DONE_GOOD = "GCS_Calc_Done_Good";
-    public static final String CALC_DONE_ERROR = "GCS_Calc_Done_Error";
-    public static final String GUI_LAYOUT_CHANGED = "GCS_Gui_LayoutChange";
+    public static class Commands {
+        public static final String CALC_PROGRESS_VALUE = "GCS_Calc_Progress";
+        public static final String CALC_DONE = "GCS_Calc_Done";
+        public static final String GUI_LAYOUT_CHANGED = "GCS_Gui_LayoutChange";
+    }
 
+    // Specifies how many active calculation worker threads in a pool.
+    private static final int MAX_CALC_THREADS = 16;
     /**
      * Private properties defining current state and other stuff.
      */
 
     //=========    Core   ==========//
-    // Event listeners, listening on EDT.
-    private ArrayList<ActionListener> EDTlisteners;
-    //private ArrayList<ActionListener> otherListeners;
+    // Event listeners, listening on EDT. Now it's SYNCHRONIZED - No more worries about threading!
+    private final List<ActionListener> EDTlisteners = Collections.synchronizedList( new ArrayList<ActionListener>() );
 
-    //========= Calculator =========//
-    // Added Calculators
-    private ArrayList<StringCalculator> calculators;
+    /**
+     * The conditional AtomicBoolean variable which informs about Having Data in Queues.
+     * - This variable is THE SAME for all CalculatorInstances - if set,
+     *   it means one of the working calculator's result queue has pending data.
+     * - We use the set() and notify() methods, to work as a condition variable.
+     */
+    private final AtomicBoolean queueDataPendingCondVar = new AtomicBoolean(false);
+    /**
+     * Master shutdown variable. If set, then all working threads must shut down.
+     */
+    private final AtomicBoolean needToShutDown = new AtomicBoolean(false);
+
+    /**
+     * Calculating thread runner.
+     * Used in a ThreadPooL when submitting new task.
+     * The passed State must be Already FULLY INITIALIZED using a constructor!
+     */
+    private class CalculatorInstance implements Runnable {
+        private final CalculatorInstanceState state;
+        private final String calcExpression;
+
+        public CalculatorInstance(CalculatorInstanceState st, String cExpression){
+            state = st;
+            calcExpression = cExpression;
+        }
+
+        @Override
+        public void run() {
+            // Launch the calculation on this worker thread.
+            state.getCalc().startCalculation(calcExpression, 0);
+        }
+    }
+    /**
+     * State of the CalculatorInstance. Passed on a constructor. The EventHandler thread keeps track on it.
+     */
+    private class CalculatorInstanceState{
+        public final AtomicBoolean needToStop = new AtomicBoolean(false);
+
+        private final int ID;
+        private final StringCalculator calc;
+
+        public int getID(){ return ID; }
+        public StringCalculator getCalc(){ return calc; }
+
+        public CalculatorInstanceState(int id, StringCalculator cal){
+            ID = id;
+            calc = cal;
+            // Set the variable by which we will signal the end of the job.
+            calc.addTerminatingVariable(needToStop);
+            calc.addTerminatingVariable(needToShutDown);
+            calc.addQueueSignalVariable(queueDataPendingCondVar);
+        }
+    }
+    /**
+     * Added Gui-Compatible Calculator Objects.
+     */
+    private ArrayList<Class> calculatorClasses;
+
+    /**
+     * The Thread Pool in which all calculation tasks will be done.
+     */
+    private final ExecutorService calcThreadPool = Executors.newFixedThreadPool(MAX_CALC_THREADS);
+    /**
+     * Currently working states contained in a Set - no duplicates.
+     */
+    private final SortedSet<CalculatorInstanceState> runningCalcStates = Collections.synchronizedSortedSet( new TreeSet<>() );
 
     // Calculator-specific states.
     private String currentQuery;
@@ -49,12 +117,59 @@ public class GuiCalcState //Thread-safe.
     // GUI Layout and CalcModes
     private GuiCalcProps.CalcLayout currentGuiLayout;
 
+    /** ============ Initialization ===========
+     * Launch control thread and initialize variables in a constructor.
+     */
+    public GuiCalcState()
+    {
+        // At first, add the basic ID=0 calculator to the array.
+        calculatorClasses.add(StringCalculator.class);
+
+        /**
+         * Create and Launch the Task Control thread.
+         * This thread polls all of the tasks in ThreadPool for intermediate (or final) results,
+         * takes them from queues, and fires appropriate events to the attached listeners on EDT.
+         */
+        new Thread( () -> {
+            while(!needToShutDown.get()){
+                // If no data available on queues, wait until notified.
+                while(!queueDataPendingCondVar.get() && !needToShutDown.get()) {
+                    try {
+                        queueDataPendingCondVar.wait();
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
+                }
+                if(needToShutDown.get()) break;
+
+                // At this point the variable is set --> data available. Check all queues for data.
+                for(CalculatorInstanceState st : runningCalcStates){
+                    if(needToShutDown.get()) // We must check for ShutDown at every iteration!
+                       break;                // If shutdown is set, it is set in all StringCalculators too.
+                    StringCalculator.Result res = st.getCalc().getIntermediateResultIfPending();
+                    if(res != null) // Got result --> invoke all listeners.
+                    {
+                        ActionEvent ae = null;
+                        // Check the Result Type to determine an event code.
+                        if((res.resultType & StringCalculator.ResultType.END) == StringCalculator.ResultType.END)
+                            ae = new ActionEvent(res, ActionEvent.ACTION_PERFORMED, Commands.CALC_DONE);
+                        else if((res.resultType & StringCalculator.ResultType.INTERMEDIATE_DATA) == StringCalculator.ResultType.INTERMEDIATE_DATA){
+                            ae = new ActionEvent(res, ActionEvent.ACTION_PERFORMED, Commands.CALC_PROGRESS_VALUE);
+                        }
+                        // Fire the event!
+                        if(ae != null)
+                            this.raiseEvent_OnEventDispatchThread( ae );
+                    }
+                }
+            }
+        } ).start();
+    }
+
     /** ============= Core Methods ============
-     *
      * Add a new event listener to be executed on the EDT thread.
      * @param list
      */
-    public synchronized void addEDTListener(ActionListener list) {
+    public void addEDTListener(ActionListener list) {
         EDTlisteners.add(list);
     }
 
@@ -63,7 +178,7 @@ public class GuiCalcState //Thread-safe.
      * because these events are being listened on the GUI.
      * @param event  - customly crafted ActionEvent.
      */
-    public synchronized void raiseEvent_OnEventDispatchThread(ActionEvent event){
+    public void raiseEvent_OnEventDispatchThread(ActionEvent event){
         // invokeLater() causes the Runnable to execute on EDT. We also use Lambdas.
         // If wr're on EDT, we call handlers directly.
         Runnable action = () -> {
@@ -80,6 +195,18 @@ public class GuiCalcState //Thread-safe.
         }
     }
 
+    /** =============== Calculator Management =============
+     * Calculator array modification methods.
+     * Basics: add, get, getCount.
+     * @param calc - calculator to add.
+     */
+    public synchronized void addCalculator(Class calc){
+        if( StringCalculator.class.isAssignableFrom(calc) )
+            calculatorClasses.add(calc);
+    }
+    public synchronized int getCalculatorCount(){ return calculatorClasses.size(); }
+    public synchronized Class getCalculator(int pos){ return calculatorClasses.get(pos); }
+
     /** ============ Property Manipulation Methods ============
      * Sets the new GUI Layout, and fires "LayoutChanged" event to all attached listeners.
      * @param newLayout - new GUI layout object
@@ -87,13 +214,11 @@ public class GuiCalcState //Thread-safe.
     public synchronized void setCalcLayout(GuiCalcProps.CalcLayout newLayout){
         currentGuiLayout = newLayout;
         // Fire a "Layout Changed" event.
-        raiseEvent_OnEventDispatchThread( new ActionEvent(this, ActionEvent.ACTION_PERFORMED, GUI_LAYOUT_CHANGED) );
+        raiseEvent_OnEventDispatchThread( new ActionEvent(this, ActionEvent.ACTION_PERFORMED, Commands.GUI_LAYOUT_CHANGED) );
     }
-    public GuiCalcProps.CalcLayout getCalcLayout(){
+    public synchronized GuiCalcProps.CalcLayout getCalcLayout(){
         return currentGuiLayout;
     }
-
-    // Calculator manipulation functions
 
     /**
      * Function starts a new calculation on a specified calculator with a specified expression.
@@ -109,25 +234,23 @@ public class GuiCalcState //Thread-safe.
         launchNewCalculationTask(calcExpr, 0);
     }
     public synchronized void launchNewCalculationTask(String calcExpr, int calcID){
-        if(calcID < 0 || calcID >= calculators.size())
+        if(calcID < 0 || calcID >= calculatorClasses.size())
             throw new RuntimeException("Wrong index specified on launchNewCalculationTask()");
-
-        StringCalculator calc = calculators.get(calcID);
-
-        // Launch calculation in new separate thread, and get intermediate results on this thread.
-        new Thread( () -> {
-            // The calculation spins in this worker, no other thread are directly affected.
-            calc.startCalculation( calcExpr, 0 );
-        } ).start();
-
-        // Get intermediate results in a loop.
-        while(true){
-            StringCalculator.Result res = calc.getWaitIntermediateResult();
-            // Check if End Result
-            if( (res.resultType & StringCalculator.ResultType.END) == StringCalculator.ResultType.END){
-                raiseEvent_OnEventDispatchThread( new ActionEvent(this, ActionEvent.ACTION_PERFORMED, CALC_DONE) );
-            }
+        // Create a new instance of a Calculator of given class.
+        StringCalculator newCalc;
+        try {
+            newCalc = (StringCalculator)(calculatorClasses.get(calcID).newInstance());
+        } catch (Exception e) {
+            System.out.println("Can't cast new object to StringCalculator.");
+            e.printStackTrace();
+            return;
         }
+        // Create a new CalculationInstanceState and corresponding CalculationInstance.
+        // When the calculation starts executing in a Pool, this State will be added to the Currently Active ones.
+        CalculatorInstanceState cs = new CalculatorInstanceState( calcID, newCalc );
+        // Put the new Instance to execution! When it starts executing, new State will be added to list,
+        // And the Control Thread will be able to check on it.
+        calcThreadPool.execute( new CalculatorInstance(cs, calcExpr) );
     }
 
     /*public synchronized String getQuery(){ return query; }
