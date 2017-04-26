@@ -31,10 +31,12 @@ public class GuiCalcState //Thread-safe.
         public static final String CALC_PROGRESS_VALUE = "GCS_Calc_Progress";
         public static final String CALC_DONE = "GCS_Calc_Done";
         public static final String GUI_LAYOUT_CHANGED = "GCS_Gui_LayoutChange";
+        public static final String GUI_MENU_CHANGED = "GCS_Gui_MenuChanged";
+        public static final String GUI_QUIT_POSTED = "GCS_Gui_QuitMsgPosted";
     }
 
     // Specifies how many active calculation worker threads in a pool.
-    private static final int MAX_CALC_THREADS = 16;
+    private static final int MAX_CALC_THREADS = 4;
     /**
      * Private properties defining current state and other stuff.
      */
@@ -119,6 +121,8 @@ public class GuiCalcState //Thread-safe.
     //========= GUI Layouts ==========//
     // GUI Layout and CalcModes
     private GuiCalcProps.CalcLayout currentGuiLayout;
+    // GUIMenu. Must be only set OnCe.
+    private GUIMenu currentGuiMenu;
 
     /** ============ Initialization ===========
      * Launch control thread and initialize variables in a constructor.
@@ -188,8 +192,8 @@ public class GuiCalcState //Thread-safe.
         // invokeLater() causes the Runnable to execute on EDT. We also use Lambdas.
         // If wr're on EDT, we call handlers directly.
         Runnable action = () -> {
-            for (ActionListener a : EDTlisteners) {
-                a.actionPerformed(event);
+            for (int a=0; a < EDTlisteners.size(); a++) {
+                EDTlisteners.get(a).actionPerformed(event);
             }
         };
 
@@ -231,7 +235,9 @@ public class GuiCalcState //Thread-safe.
      * @param menu - GUIMenu class object.
      */
     public synchronized void setGuiMenu(GUIMenu menu){
-        // TODO: Menu must be final.
+        currentGuiMenu = menu;
+        // Fire a "Menu Changed" event.
+        raiseEvent_OnEventDispatchThread( new ActionEvent(this, ActionEvent.ACTION_PERFORMED, Commands.GUI_MENU_CHANGED) );
     }
     public synchronized GUIMenu getGuiMenu(){ return currentGuiMenu; }
 
@@ -275,8 +281,14 @@ public class GuiCalcState //Thread-safe.
      * and sets the ThreadPool to not accept any new tasks.
      */
     public synchronized void postQuitMessage(){
+        // Firstly, shutdown background threads by setting appropriate vars asynchronously.
         needToShutDown.set(true);
-        calcThreadPool.shutdown();
+        synchronized (queueDataPendingCondVar) {
+            queueDataPendingCondVar.notifyAll(); // Notify to wake up the control thread if it is waiting.
+        }
+        calcThreadPool.shutdown(); // Signal the WorkerPool to not accept any new tasks.
+        // Finally, raise event that QUIT has been posted.
+        raiseEvent_OnEventDispatchThread( new ActionEvent(this, ActionEvent.ACTION_PERFORMED, Commands.GUI_QUIT_POSTED) );
     }
 
     /**

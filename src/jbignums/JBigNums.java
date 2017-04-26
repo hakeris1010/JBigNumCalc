@@ -18,7 +18,9 @@ public class JBigNums {
     /**
      * @param args the command line arguments
      */
-    public static void main(String[] args) {
+    public static void main(String[] args)
+    {
+        System.out.println("STARTING GUICALC!!!");
         new GuiCalc(true);
     }
 }

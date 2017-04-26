@@ -49,7 +49,12 @@ public class GuiCalc {
             e.printStackTrace();
             throw new RuntimeException("Error : " + e.toString());
         }
+        // Remove all components from previous layout
+        this.frame.getContentPane().removeAll();
+        // Now set the new layout pane
         this.frame.setContentPane(newLayout.getRootContentPanel());
+        this.frame.getContentPane().revalidate();
+        this.frame.getContentPane().repaint();
     }
 
     /**
@@ -70,6 +75,7 @@ public class GuiCalc {
                 throw new RuntimeException("Can't set up Look And Feel!!!");
             }
 
+            // Firstly, initialize the state's essential fields and layouts.
             // Initialize MenuBar
             GUIMenu newMenu;
             try {
@@ -103,9 +109,8 @@ public class GuiCalc {
                     {
                         // Signal on state that everything has to be shutted down, and wait.
                         cs.waitForTasksEnd(true);
-
-                        if(frameCount>0) frameCount--;
-                        frame.dispose();
+                        // We no need to dispose of the frame here, because it will be done on
+                        // our attached State Listener, because PostQuitMsg on state will invoke the QUIT event.
                     }
                 }
             } );
@@ -114,8 +119,15 @@ public class GuiCalc {
             cs.addEDTListener( (ActionEvent evt) ->{
                 switch(evt.getActionCommand()){
                     case GuiCalcState.Commands.GUI_LAYOUT_CHANGED:
+                        System.out.println("Gui layout changed. New layout: " + cs.getCalcLayout().toString());
                         setNewGuiLayout( cs.getCalcLayout().getDesign() );
-                    // TODO: Maybe some more.
+                        break;
+                    case GuiCalcState.Commands.GUI_QUIT_POSTED:
+                        System.out.println("GUI Exit message posted. Disposing the frame...");
+                        if(frameCount>0) frameCount--;
+                        frame.dispose();
+                        break;
+                    //...
                 }
             } );
 

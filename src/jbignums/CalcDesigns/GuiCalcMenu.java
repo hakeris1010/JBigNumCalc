@@ -55,7 +55,6 @@ public class GuiCalcMenu implements GUIMenu {
         // Search for "Name" in JMenus list, and add the item to the appropriate menu.
     }
 
-    @Deprecated
     private void populateMenuBar()
     {
         mubar = new JMenuBar();
@@ -72,7 +71,7 @@ public class GuiCalcMenu implements GUIMenu {
         rbMenuItem.setSelected( true ); // DEFAULT
         rbMenuItem.setMnemonic(KeyEvent.VK_N);
         rbMenuItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_1, ActionEvent.ALT_MASK));
-        rbMenuItem.setActionCommand("MenuBar_View_NormalMode");
+        rbMenuItem.setActionCommand("View_NormalMode");
         rbMenuItem.addActionListener(actl);
         group.add(rbMenuItem);
         menu.add(rbMenuItem);
@@ -81,7 +80,7 @@ public class GuiCalcMenu implements GUIMenu {
         rbMenuItem.setSelected( false );
         rbMenuItem.setMnemonic(KeyEvent.VK_S);
         rbMenuItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_2, ActionEvent.ALT_MASK));
-        rbMenuItem.setActionCommand("MenuBar_View_ScientificMode");
+        rbMenuItem.setActionCommand("View_ScientificMode");
         rbMenuItem.addActionListener(actl);
         group.add(rbMenuItem);
         menu.add(rbMenuItem);
@@ -150,7 +149,6 @@ public class GuiCalcMenu implements GUIMenu {
 }
 
 // These listeners must be invoked on the EDT Thread.
-@Deprecated
 class GuiCalcMenuBarListener implements ActionListener
 {
     private GuiCalcState calcState;
@@ -167,11 +165,11 @@ class GuiCalcMenuBarListener implements ActionListener
         {
             case "View_NormalMode":
                 JOptionPane.showMessageDialog(null, "Normal Mode selected.", "InfoBox", JOptionPane.INFORMATION_MESSAGE);
-                //calcState.setCalcMode(GuiCalcProps.CalcLayout.NORMAL);
+                calcState.setCalcLayout(GuiCalcProps.CalcLayout.NORMAL);
                 break;
             case "View_ScientificMode":
                 JOptionPane.showMessageDialog(null, "Scientific Mode selected.", "InfoBox", JOptionPane.INFORMATION_MESSAGE);
-                //calcState.setCalcMode(GuiCalcProps.CalcLayout.SCIENTIFIC);
+                calcState.setCalcLayout(GuiCalcProps.CalcLayout.SCIENTIFIC);
                 break;
             case "View_TypedInput":
                 //calcState.canTypeInQuery.set(true);
