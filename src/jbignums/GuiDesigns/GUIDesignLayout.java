@@ -1,4 +1,4 @@
-package jbignums.CalcDesigns;
+package jbignums.GuiDesigns;
 
 import jbignums.CalcProperties.GuiCalcState;
 

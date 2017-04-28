@@ -1,8 +1,8 @@
 package jbignums.CalcProperties;
 
-import jbignums.CalcDesigns.GUIDesignLayout;
-import jbignums.CalcDesigns.GuiCalcMenu;
-import jbignums.CalcDesigns.JGUI_SimpleCalculator;
+import jbignums.GuiDesigns.GUIDesignLayout;
+import jbignums.GuiDesigns.GuiCalcMenu;
+import jbignums.GuiDesigns.JGUI_SimpleCalculator;
 
 public class GuiCalcProps {
     /**

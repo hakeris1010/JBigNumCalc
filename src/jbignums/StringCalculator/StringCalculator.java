@@ -1,10 +1,15 @@
 package jbignums.StringCalculator;
 
+import com.sun.org.apache.regexp.internal.RE;
+
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicLong;
 
 /**
  *  A Calculator designed to work concurrently.
@@ -32,48 +37,79 @@ public abstract class StringCalculator{
         public static final int INTERMEDIATE_PERCENTAGE = 1 << 4;
     }
 
-    public class Result {
-        public double dResult;
-        public ArrayList<String> data;
+    public static class Result {
+        // Header Fields
+        public long taskID;
         public DataType dataType;
         public int resultType;
+        // Data Payload
+        public double dblResult;
+        public String strResult;
+        public BigDecimal bigResult;
 
-        public Result(double dres, ArrayList<String> sres, DataType dtp, int rtp){
-            dResult = dres;
-            data = sres;
-            dataType = dtp;
-            resultType = rtp;
+        public Result(){ }
+        public Result(long tid, DataType dataType1, int resultType1, double dres, String sres, BigDecimal bigres){
+            taskID = tid;
+            dataType = dataType1;
+            resultType = resultType1;
+
+            dblResult = dres;
+            strResult = sres;
+            bigResult = bigres;
         }
     }
 
-    /**
+    /** = = = = = == = = = = == = = = = == = = = = == = = = = = //
      * Private fields
      */
     protected String calcExpression;
-    protected volatile int calcMode;
-    protected Result lastResult;
+    protected volatile int calcMode = 0;
+
+    protected AtomicLong currentID = new AtomicLong(0);
     protected volatile boolean stillCalculating = false;
+
+    protected Result lastResult;
 
     // Lists of Variables for communicating and notifying other threads
     protected final List<AtomicBoolean> terminators = Collections.synchronizedList( new ArrayList<>() );
-    protected final List<AtomicBoolean> queueSignalers = Collections.synchronizedList( new ArrayList<>() );
+
+    /* DEPRECATED: The following queueSignaler list is needed for the "One Handler, Many Queues" model,
+             so that all separate calculators could have their own respective queues, and signal the waiter
+             using a condition variable, which is the following. But this is inefficient, because we
+             already use a BlockingQueue with waiting enabled so handlers can wait.
+     */
+    //protected final List<AtomicBoolean> queueSignalers = Collections.synchronizedList( new ArrayList<>() );
+
+    /* TODO: The New model: "One Queue, Many Workers (0-Many Handlers)".
+             This model will use One shared queue for all calculator tasks to push their results. For task
+             identification, we'll use initially assigned available unique ID number, which will be added to
+             Result class as another header.
+             The shared queue will be assigned in the constructor or dynamically.
+     */
+    protected BlockingQueue<Result> resultQueue;
 
     // TODO: Use this to check for deadlocks, so that blocking functions could not be called from Worker threads.
     protected long[] workerThreadIDS;
 
-    /**
-     * Use this queue to get and wait for intermediate results async'ly.
+    /** = = = = = == = = = = == = = = = == = = = = == = = = = = //
+     * Private  Methods
      */
-    protected final static int QUEUE_MAX = 16;
-    protected final LinkedBlockingQueue<Result> resultQueue = new LinkedBlockingQueue<>(QUEUE_MAX);
+    private boolean isTerminatorSet(){
+        for(int i = 0; i<terminators.size(); i++){
+            // If at least one terminating variable is set, we must quit a job.
+            if(terminators.get(i).get())
+                return true;
+        }
+        return false;
+    }
 
-    /**
+    /** = = = = = == = = = = == = = = = == = = = = == = = = = = //
      * Constructors
      */
     public StringCalculator(){ }
-    public StringCalculator(AtomicBoolean terminatingVariable, AtomicBoolean queueSignalVariable, int calculationMode){
+    public StringCalculator(BlockingQueue<Result> resultQue, AtomicBoolean terminatingVariable, int calculationMode){
         terminators.add( terminatingVariable );
-        queueSignalers.add( queueSignalVariable );
+        resultQueue = resultQue;
         calcMode = calculationMode;
     }
 
@@ -86,37 +122,51 @@ public abstract class StringCalculator{
      * - Assign earlier, launch later.
      *
      * @param expression - String representation of CalcExpression, e.g. "2+2" or "sqrt(1)"
+     * @param ID - The unique ID of the job being started. Usually equals the hash code of current
+     *             calculator object, because 1 calculator object can perform 1 job at a time.
      * @param mode - Not yet implemented. Pass 0.
      */
-    public void startCalculation(String expression, int mode){
-        assignExpression(expression, mode);
-        startCalculation();
+    public Result startCalculation(String expression, long ID, int mode){
+        assignExpression(expression, ID, mode);
+        return startCalculation();
     }
-    public synchronized void assignExpression(String expression, int mode){
+    public synchronized void assignExpression(String expression, long ID, int mode){
+        currentID.set( ID );
         calcExpression = expression;
         calcMode = mode;
     }
 
     // Actual implementation here
-    public void startCalculation(){
-        /* TODO */
+    public Result startCalculation() throws RuntimeException {
+        // Perform validation check on the essential variables.
+        if(calcExpression == null || resultQueue == null)
+            throw new RuntimeException("Can't start calculation. Missing essential parameters.");
+
+        // Before starting calculation, inter-thread starting operations.
         synchronized (this) {
             stillCalculating = true;
         }
 
         // Perform actual calculation there.
+        // TODO: Check the TERMINATING VARIABLES while doing lenghty tasks.
+        // isTerminatorSet()...
 
-        Result datLastRes = new Result(1.0, null, DataType.DEFAULT, ResultType.END);
+        // Create a new Result object (Header and Payload)
+        Result datLastRes = new Result( currentID.get(), DataType.DEFAULT, ResultType.END,
+                                        1.0, "1.0", null);
 
-        // Push end result to queue. When taken and checked and determined END, the caller will exit it's LooP.
+        // Push result to shared queue. Many calculator are using it, but instance is determined using ID field.
         // No syncing is needed, because BlockingQueue is thread-safe.
         resultQueue.add( datLastRes );
 
+        // At the end, perform the ending inter-thread jobs of setting specific variables and stuff.
         synchronized (this) {
             lastResult = datLastRes;
             stillCalculating = false;
             this.notifyAll(); // Notify all waiters that calculatione is done.
         }
+
+        return lastResult;
     }
 
     /**
@@ -146,11 +196,23 @@ public abstract class StringCalculator{
         return lastResult;
     }
     /**
-     * Checks if still calc'ing and returns if so.
+     * Getters for private fields
      */
     public boolean isCalculating(){
         return stillCalculating;
     }
+    public long getCurrentID(){ return currentID.get(); }
+    public synchronized String getLastExpression(){ return calcExpression; }
+
+    /**
+     * Set the new Result Queue reference.
+     * @param queue - the Blocking Queue object.
+     */
+    public synchronized void setResultQueue(BlockingQueue<Result> queue){
+        this.resultQueue = queue;
+    }
+
+    public synchronized BlockingQueue<Result> getResultQueue(){ return resultQueue; }
 
     /**
      * Get the next Intermediate Result. Must not be called from This!
@@ -188,12 +250,9 @@ public abstract class StringCalculator{
      * Set the variable by which we'll signal the calculator to end work.
       * @param termvar - AtomicBoolean working as a terminator.
      */
-    public synchronized void addTerminatingVariable(AtomicBoolean termvar){ terminators.add(termvar); }
-    /**
-     * Set the variable which acts as a Condition Variable for notifying if data is pending on Results Queue.
-     * @param signalvar
-     */
-    public synchronized void addQueueSignalVariable(AtomicBoolean signalvar){ queueSignalers.add(signalvar); }
+    public synchronized void addTerminatingVariable(AtomicBoolean termvar){
+        terminators.add(termvar);
+    }
 
 }
 

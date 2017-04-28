@@ -5,12 +5,12 @@
  */
 package jbignums.GuiCalc;
 
-import jbignums.CalcDesigns.GUIDesignLayout;
-import jbignums.CalcDesigns.GUIMenu;
+import jbignums.GuiDesigns.GUIDesignLayout;
+import jbignums.GuiDesigns.GUIMenu;
 import jbignums.CalcProperties.GuiCalcProps;
 import jbignums.CalcProperties.GuiCalcState;
 import jbignums.JBigNums;
-import java.awt.*;
+
 import java.awt.event.*;
 import javax.swing.*;
 
@@ -119,8 +119,8 @@ public class GuiCalc {
             cs.addEDTListener( (ActionEvent evt) ->{
                 switch(evt.getActionCommand()){
                     case GuiCalcState.Commands.GUI_LAYOUT_CHANGED:
-                        System.out.println("Gui layout changed. New layout: " + cs.getCalcLayout().toString());
-                        setNewGuiLayout( cs.getCalcLayout().getDesign() );
+                        System.out.println("Gui layout changed. New layout: " + cs.getGuiDesignLayout().toString());
+                        setNewGuiLayout( cs.getGuiDesignLayout().getClass() );
                         break;
                     case GuiCalcState.Commands.GUI_QUIT_POSTED:
                         System.out.println("GUI Exit message posted. Disposing the frame...");
