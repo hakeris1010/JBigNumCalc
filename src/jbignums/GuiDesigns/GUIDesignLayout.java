@@ -8,7 +8,7 @@ import javax.swing.*;
  *  Basic interface for all Gui Designs
  */
 public interface GUIDesignLayout {
-    void create(GuiCalcState state);
+    void create(GuiState state);
     JPanel getRootContentPanel();
 }
 

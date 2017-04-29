@@ -30,7 +30,7 @@ import java.util.ArrayList;
 
 public class GuiCalcMenu implements GUIMenu {
     JMenuBar mubar;
-    ArrayList<JMenu> menus = new ArrayList<>();
+    ArrayList<JMenu> rootMenus = new ArrayList<>();
     ActionListener actl;
 
     // Dynamically construct the new menu
@@ -40,7 +40,10 @@ public class GuiCalcMenu implements GUIMenu {
     }
 
     @Override
-    public void create(GuiCalcState state){
+    public void create(GuiState state){
+        // As this method must be called on EDT, we create Swing menu objects here.
+        mubar = new JMenuBar();
+        // Create a listener and populate stuff.
         actl = new GuiCalcMenuBarListener(state);
         populateMenuBar();
     }
@@ -50,21 +53,45 @@ public class GuiCalcMenu implements GUIMenu {
         return mubar;
     }
 
-    public void addMenuItem(MenuItem item)
-    {
+    public void addMenuItem(MenuItem item) {
         // Search for "Name" in JMenus list, and add the item to the appropriate menu.
+        JMenu rmen = null;
+        for(JMenu mn : rootMenus) {
+            if ( item.getParentMenuName().equals(mn.getText()) ) { // E.g. we want a "Edit" menu, name is "Edit"
+                rmen = mn;
+                break;
+            }
+        }
+        // No menu with that name. Create one.
+        if(rmen == null) {
+            rmen = new JMenu(item.getParentMenuName());
+            // TODO: rmen.setMnemonic();
+            rootMenus.add(rmen);
+            mubar.add(rmen);
+        }
+
+        if(item.getMenuItem() != null) { // If item is specified, add it.
+            rmen.add(item.getMenuItem());
+        }
+        if(item.isSeparatorAfter()){  // If separator, add it.
+            rmen.addSeparator();
+        }
+    }
+
+    // Private methods ================================//
+    private void addAllRootMenusToMubar(){
+        for(JMenu m : rootMenus){
+            mubar.add(m);
+        }
     }
 
     private void populateMenuBar()
     {
-        mubar = new JMenuBar();
-        // View Menu.
-        JMenu menu = new JMenu("View");
-        menu.setMnemonic(KeyEvent.VK_V);
-        mubar.add(menu);
-        menus.add(menu);
+        //=============== View Menu. ===============//
+        JMenu menu = DefaultMenus.View.getJMenu();
+        rootMenus.add( menu );
 
-        //Modes
+        // Layouts
         ButtonGroup group = new ButtonGroup();
 
         JRadioButtonMenuItem rbMenuItem = new JRadioButtonMenuItem("Normal Mode");
@@ -85,56 +112,19 @@ public class GuiCalcMenu implements GUIMenu {
         group.add(rbMenuItem);
         menu.add(rbMenuItem);
 
-        //a group of check box menu items
-        menu.addSeparator();
+        //=============== Edit Menu. ===============//
+        menu = DefaultMenus.Edit.getJMenu();
+        rootMenus.add(menu);
 
-        JCheckBoxMenuItem cbMenuItem = new JCheckBoxMenuItem("Typed Input");
-        cbMenuItem.setSelected( false ); // DEFAULT
-        cbMenuItem.setMnemonic(KeyEvent.VK_T);
-        cbMenuItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_T, ActionEvent.ALT_MASK));
-        cbMenuItem.setActionCommand("View_TypedInput");
-        cbMenuItem.addActionListener(actl);
-        menu.add(cbMenuItem);
-
-        // Other modes (Conversion, etc)
-        menu.addSeparator();
-
-        cbMenuItem = new JCheckBoxMenuItem("Conversion&Stuff");
-        cbMenuItem.setSelected( false );
-        cbMenuItem.setMnemonic(KeyEvent.VK_O);
-        cbMenuItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_O, ActionEvent.ALT_MASK));
-        cbMenuItem.setActionCommand("View_Conversion");
-        cbMenuItem.addActionListener(actl);
-        menu.add(cbMenuItem);
-
-        // Edit menu
-        menu = new JMenu("Edit");
-        menu.setMnemonic(KeyEvent.VK_E);
-        mubar.add(menu);
-        menus.add(menu);
-
-        JMenuItem menuItem = new JMenuItem("Copy");
-        menuItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_C, ActionEvent.CTRL_MASK));
-        menuItem.setActionCommand("Edit_Copy");
-        menuItem.addActionListener(actl);
-        menu.add(menuItem);
-
-        menuItem = new JMenuItem("Paste");
-        menuItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_V, ActionEvent.CTRL_MASK));
-        menuItem.setActionCommand("Edit_Paste");
-        menuItem.addActionListener(actl);
-        menu.add(menuItem);
-
-        menuItem = new JMenuItem("View History", KeyEvent.VK_H);
+        // History view
+        JMenuItem menuItem = new JMenuItem("View History", KeyEvent.VK_H);
         menuItem.setActionCommand("Edit_History");
         menuItem.addActionListener(actl);
         menu.add(menuItem);
 
-        // Help Menu
-        menu = new JMenu("Help");
-        menu.setMnemonic(KeyEvent.VK_H);
-        mubar.add(menu);
-        menus.add(menu);
+        //=============== Help Menu. ===============//
+        menu = DefaultMenus.Help.getJMenu();
+        rootMenus.add(menu);
 
         menuItem = new JMenuItem("View Help", KeyEvent.VK_E);
         menuItem.setActionCommand("Help_Help");
@@ -145,15 +135,18 @@ public class GuiCalcMenu implements GUIMenu {
         menuItem.setActionCommand("Help_About");
         menuItem.addActionListener(actl);
         menu.add(menuItem);
+
+        // ------- Add all Menus in the list to the MenuBar ------- //
+        addAllRootMenusToMubar();
     }
 }
 
 // These listeners must be invoked on the EDT Thread.
 class GuiCalcMenuBarListener implements ActionListener
 {
-    private GuiCalcState calcState;
+    private GuiState calcState;
     
-    GuiCalcMenuBarListener(GuiCalcState state){
+    GuiCalcMenuBarListener(GuiState state){
         calcState = state;
     }
     
@@ -170,25 +163,6 @@ class GuiCalcMenuBarListener implements ActionListener
             case "View_ScientificMode":
                 JOptionPane.showMessageDialog(null, "Scientific Mode selected.", "InfoBox", JOptionPane.INFORMATION_MESSAGE);
                 calcState.setGuiDesignLayout(GuiCalcProps.CalcLayout.SCIENTIFIC.getDesign());
-                break;
-            case "View_TypedInput":
-                //calcState.canTypeInQuery.set(true);
-                break;
-            case "View_Conversion":
-                //calcState.isConversionMode.set(true);
-                break;
-            case "Edit_Copy":
-                try{
-                    StringSelection stringSelection = new StringSelection(/*calcState.getQuery()*/ "Nyaa");
-                    Clipboard clpbrd = Toolkit.getDefaultToolkit().getSystemClipboard();
-                    clpbrd.setContents(stringSelection, null);
-                } catch (Exception ex){
-                    JOptionPane.showMessageDialog(null, "Can't put to clipboard.", "Error", JOptionPane.ERROR_MESSAGE);
-                }
-                break;
-            case "Edit_Paste":
-                /*clpbrd = Toolkit.getDefaultToolkit().getSystemClipboard();
-                Transferable tr = clpbrd.getContents(null);*/
                 break;
             case "Edit_History":
                 JOptionPane.showMessageDialog(null, /*calcState.getQueryHistory()*/ "Nyaa", "History", JOptionPane.INFORMATION_MESSAGE);

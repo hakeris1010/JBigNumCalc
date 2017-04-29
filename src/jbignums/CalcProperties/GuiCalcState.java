@@ -120,9 +120,7 @@ public class GuiCalcState implements GuiState //Thread-safe.
     private LinkedBlockingQueue<StringCalculator.Result> calcResultQueue = new LinkedBlockingQueue<>(CALC_MAX_QUEUE);
 
     // Calculator-specific states.
-    private String currentQuery;
-    private ArrayList<String> queryHistory;
-    private Queue<String> pendingQueries;
+    private ArrayList<String> queryHistory = new ArrayList<>();
 
     //========= GUI Layouts ==========//
     // GUI Layout and CalcModes
@@ -294,6 +292,10 @@ public class GuiCalcState implements GuiState //Thread-safe.
             e.printStackTrace();
             return 0;
         }
+
+        // Add current query to history.
+        queryHistory.add(calcExpr);
+
         // Create a new CalculationInstanceState and corresponding CalculationInstance.
         // When the calculation starts executing in a Pool, this State will be added to the Currently Active ones.
         CalculatorInstanceState cs = new CalculatorInstanceState( newCalc );
@@ -340,9 +342,5 @@ public class GuiCalcState implements GuiState //Thread-safe.
         }
     }
 
-    /*public synchronized String getQuery(){ return query; }
-    public synchronized void setQuery(String qu){ query = qu; }
-
     public synchronized ArrayList<String> getQueryHistory(){ return queryHistory; }
-    public synchronized void setQueryHistory(ArrayList<String> qu){ queryHistory = qu; }*/
 }

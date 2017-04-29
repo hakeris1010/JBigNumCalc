@@ -1,13 +1,10 @@
 package jbignums.StringCalculator;
 
-import com.sun.org.apache.regexp.internal.RE;
-
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -32,7 +29,6 @@ public abstract class StringCalculator{
     }
     public static class ResultType{
         public static final int END     = 1 << 0;
-        public static final int START   = 1 << 1;
         public static final int INTERMEDIATE_DATA       = 1 << 2;
         public static final int INTERMEDIATE_PERCENTAGE = 1 << 4;
     }

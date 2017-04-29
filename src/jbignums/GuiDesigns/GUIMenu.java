@@ -3,6 +3,7 @@ package jbignums.GuiDesigns;
 import jbignums.CalcProperties.GuiCalcState;
 
 import javax.swing.*;
+import java.awt.*;
 import java.awt.event.KeyEvent;
 /**
  *  Basic interface for JMenuBar designs
@@ -12,17 +13,20 @@ public interface GUIMenu {
      * Basic class defining the GuiMenuItemGroup
      */
      class MenuItem{
-        private JMenuItem menuItem;
+        private JComponent menuItem;
         private String menuName;
         private boolean separatorAfter;
 
-        public MenuItem(String parentMenuName, JMenuItem itemToAdd, boolean addSeparatorAfter){
+        public MenuItem(String parentMenuName, JComponent itemToAdd){
+            this(parentMenuName, itemToAdd, false);
+        }
+        public MenuItem(String parentMenuName, JComponent itemToAdd, boolean addSeparatorAfter){
             menuItem = itemToAdd;
             menuName = parentMenuName;
             separatorAfter = addSeparatorAfter;
         }
 
-        public JMenuItem getMenuItem(){ return menuItem; }
+        public JComponent getMenuItem(){ return menuItem; }
         public String getParentMenuName(){ return menuName; }
         public boolean isSeparatorAfter(){ return separatorAfter; }
     }
@@ -54,7 +58,7 @@ public interface GUIMenu {
     }
 
     // Functions to-be implemented.
-    void create(GuiCalcState state);
+    void create(GuiState state);
     JMenuBar getMenuBar();
     void addMenuItem(MenuItem item);
 }
