@@ -1,8 +1,8 @@
 package jbignums.CalcProperties;
 
-import jbignums.GuiDesigns.GUIDesignLayout;
-import jbignums.GuiDesigns.GUIMenu;
-import jbignums.GuiDesigns.GuiState;
+import jbignums.GuiCalc.Swing.GuiDesigns.GUIDesignLayout;
+import jbignums.GuiCalc.Swing.GUIMenu;
+import jbignums.GuiCalc.Swing.GuiState;
 import jbignums.StringCalculator.StringCalculator;
 
 import javax.swing.*;
@@ -23,7 +23,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
  *   specific command by calling the appropriate method.
  */
 
-public class GuiCalcState implements GuiState //Thread-safe.
+public class GuiCalcState  //Thread-safe.
 {
     /** = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = =
      * Constants
@@ -33,8 +33,6 @@ public class GuiCalcState implements GuiState //Thread-safe.
     public static class Commands {
         public static final String CALC_PROGRESS_VALUE = "GCS_Calc_Progress";
         public static final String CALC_DONE = "GCS_Calc_Done";
-        public static final String GUI_LAYOUT_CHANGED = "GCS_Gui_LayoutChange";
-        public static final String GUI_MENU_CHANGED = "GCS_Gui_MenuChanged";
         public static final String GUI_QUIT_POSTED = "GCS_Gui_QuitMsgPosted";
     }
 
@@ -68,7 +66,7 @@ public class GuiCalcState implements GuiState //Thread-safe.
     /**
      * State of the CalculatorInstance. Passed on a constructor. The EventHandler thread keeps track on it.
      */
-    private class CalculatorInstanceState{
+    private class CalculatorInstanceState {
         public final AtomicBoolean needToStop = new AtomicBoolean(false);
 
         private final long taskID;
@@ -93,7 +91,8 @@ public class GuiCalcState implements GuiState //Thread-safe.
      * Private Fields
      */
     // Event listeners, listening on EDT. Now it's SYNCHRONIZED - No more worries about threading!
-    private final List<ActionListener> EDTlisteners = Collections.synchronizedList( new ArrayList<ActionListener>() );
+    //private final List<ActionListener> EDTlisteners = Collections.synchronizedList( new ArrayList<ActionListener>() );
+    private final List<XEventListener> eventListeners = Collections.synchronizedList( new ArrayList<>() );
 
     // Master shutdown variable. If set, then all working threads must shut down.
     private final AtomicBoolean needToShutDown = new AtomicBoolean(false);
@@ -122,11 +121,7 @@ public class GuiCalcState implements GuiState //Thread-safe.
     // Calculator-specific states.
     private ArrayList<String> queryHistory = new ArrayList<>();
 
-    //========= GUI Layouts ==========//
-    // GUI Layout and CalcModes
-    private GUIDesignLayout currentGuiLayout;
-    // GUIMenu. Must be only set OnCe.
-    private GUIMenu currentGuiMenu;
+    // UPDATE: GUI and Layouts are no longer managed in GuiCalcState.
 
     /** = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = =
      * Private Methods
@@ -159,16 +154,18 @@ public class GuiCalcState implements GuiState //Thread-safe.
                 }
 
                 if(res != null){ // Got result --> invoke all listeners.
-                    ActionEvent ae = null;
+                    XEvent ae = null;
                     // Check the Result Type to determine an event code.
                     if((res.resultType & StringCalculator.ResultType.END) == StringCalculator.ResultType.END)
-                        ae = new ActionEvent(res, ActionEvent.ACTION_PERFORMED, Commands.CALC_DONE);
+                        ae = new XEvent(res, XEvent.ACTION_PERFORMED, Commands.CALC_DONE);
                     else if((res.resultType & StringCalculator.ResultType.INTERMEDIATE_DATA) == StringCalculator.ResultType.INTERMEDIATE_DATA){
-                        ae = new ActionEvent(res, ActionEvent.ACTION_PERFORMED, Commands.CALC_PROGRESS_VALUE);
+                        ae = new XEvent(res, XEvent.ACTION_PERFORMED, Commands.CALC_PROGRESS_VALUE);
                     }
                     // Fire the event!
-                    if(ae != null)
-                        this.raiseEvent_OnEventDispatchThread( ae );
+                    if(ae != null) {
+                        //this.raiseEvent_OnEventDispatchThread( ae );
+                        this.dispatchXEvent( ae );
+                    }
                 }
             }
         } );
@@ -182,8 +179,8 @@ public class GuiCalcState implements GuiState //Thread-safe.
      * Add a new event listener to be executed on the EDT thread.
      * @param list
      */
-    public void addEDTListener(ActionListener list) {
-        EDTlisteners.add(list);
+    public void addXEventListener(XEventListener list) {
+        eventListeners.add(list);
     }
 
     /**
@@ -191,20 +188,11 @@ public class GuiCalcState implements GuiState //Thread-safe.
      * because these events are being listened on the GUI.
      * @param event  - customly crafted ActionEvent.
      */
-    public void raiseEvent_OnEventDispatchThread(ActionEvent event){
+    public void dispatchXEvent(XEvent event){
         // invokeLater() causes the Runnable to execute on EDT. We also use Lambdas.
         // If wr're on EDT, we call handlers directly.
-        Runnable action = () -> {
-            for (int a=0; a < EDTlisteners.size(); a++) {
-                EDTlisteners.get(a).actionPerformed(event);
-            }
-        };
-
-        if( javax.swing.SwingUtilities.isEventDispatchThread() ) {
-            action.run();
-        }
-        else { // If not EDT, use the "invokeLater()".
-            SwingUtilities.invokeLater( action );
+        for (int a=0; a < eventListeners.size(); a++) {
+            eventListeners.get(a).actionPerformed(event);
         }
     }
 
@@ -219,48 +207,6 @@ public class GuiCalcState implements GuiState //Thread-safe.
     }
     public synchronized int getCalculatorCount(){ return calculatorClasses.size(); }
     public synchronized Class getCalculator(int pos){ return calculatorClasses.get(pos); }
-
-    /** ============ Property Manipulation Methods ============
-     * Sets the new GUI Layout, and fires "LayoutChanged" event to all attached listeners.
-     * @param newLayout - new GUI layout object
-     */
-    public synchronized void setGuiDesignLayout(GUIDesignLayout newLayout){
-        currentGuiLayout = newLayout;
-        // Fire a "Layout Changed" event.
-        raiseEvent_OnEventDispatchThread( new ActionEvent(this, ActionEvent.ACTION_PERFORMED, Commands.GUI_LAYOUT_CHANGED) );
-    }
-
-    public void setGuiDesignLayout(Class layoutClass){
-        if(GUIDesignLayout.class.isAssignableFrom(layoutClass)){ // Valid class
-            // Validly assign new instance.
-            GUIDesignLayout nuLayout = null;
-            try {
-                nuLayout = (GUIDesignLayout)(layoutClass.newInstance());
-                nuLayout.create(this);
-            } catch (InstantiationException e) {
-                e.printStackTrace();
-            } catch (IllegalAccessException e) {
-                e.printStackTrace();
-            }
-            if(nuLayout != null)
-                setGuiDesignLayout(nuLayout);
-        }
-    }
-
-    public synchronized GUIDesignLayout getGuiDesignLayout(){
-        return currentGuiLayout;
-    }
-
-    /**
-     * Sets the current menu
-     * @param menu - GUIMenu class object.
-     */
-    public synchronized void setGuiMenu(GUIMenu menu){
-        currentGuiMenu = menu;
-        // Fire a "Menu Changed" event.
-        raiseEvent_OnEventDispatchThread( new ActionEvent(this, ActionEvent.ACTION_PERFORMED, Commands.GUI_MENU_CHANGED) );
-    }
-    public synchronized GUIMenu getGuiMenu(){ return currentGuiMenu; }
 
     /**
      * Function starts a new calculation on a specified calculator with a specified expression.
@@ -318,7 +264,7 @@ public class GuiCalcState implements GuiState //Thread-safe.
 
         calcThreadPool.shutdown(); // Signal the WorkerPool to not accept any new tasks.
         // Finally, raise event that QUIT has been posted.
-        raiseEvent_OnEventDispatchThread( new ActionEvent(this, ActionEvent.ACTION_PERFORMED, Commands.GUI_QUIT_POSTED) );
+        //raiseEvent_OnEventDispatchThread( new ActionEvent(this, ActionEvent.ACTION_PERFORMED, Commands.GUI_QUIT_POSTED) );
     }
 
     /**

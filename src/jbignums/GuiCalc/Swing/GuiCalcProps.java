@@ -1,14 +1,14 @@
-package jbignums.CalcProperties;
+package jbignums.GuiCalc.Swing;
 
-import jbignums.GuiDesigns.GUIDesignLayout;
-import jbignums.GuiDesigns.GuiCalcMenu;
-import jbignums.GuiDesigns.JGUI_SimpleCalculator;
+import jbignums.GuiCalc.Swing.GuiDesigns.GUIDesignLayout;
+import jbignums.GuiCalc.Swing.GuiCalcMenu;
+import jbignums.GuiCalc.Swing.GuiDesigns.JGUI_SimpleCalculator;
 
-public class GuiCalcProps {
+public final class GuiCalcProps {
     /**
      *  All the general GUI defaults.
      */
-    public static class Defaults {
+    public static final class Defaults {
         // Default Menu Bar (Controlling Other General GUI elements)
         static public final Class menuBar = GuiCalcMenu.class;
         // Default General GUI elements
@@ -21,26 +21,26 @@ public class GuiCalcProps {
     }
 
     public enum CalcLayout {
-        NORMAL (300, 400, JGUI_SimpleCalculator.class),
-        SCIENTIFIC (600, 400, JGUI_SimpleCalculator.class);
+        NORMAL ("Normal", true, JGUI_SimpleCalculator.class),
+        SCIENTIFIC ("Scientific", false, JGUI_SimpleCalculator.class);
 
         // Private parts
-        private final int mWidth;
-        private final int mHeight;
+        private final String name;
         private Class design;
+        private boolean isdef;
 
-        CalcLayout(int w, int h, Class designClass){
+        CalcLayout(String lname, boolean isDefault, Class designClass){
             // Check if passed class is a subclass of GUIDesignLayout.
             if( ! GUIDesignLayout.class.isAssignableFrom(designClass) )
                 throw new RuntimeException("Layout class is now implementing a GUIDesignLayout interface");
 
-            mWidth = w;
-            mHeight = h;
+            name = lname;
             design = designClass;
+            isdef = isDefault;
         }
-        public int width(){ return mWidth; }
-        public int height(){ return mHeight; }
+        public String getName(){ return name; }
         public Class getDesign(){ return design; }
+        public boolean isDefault(){ return isdef; }
     }
 
 }
