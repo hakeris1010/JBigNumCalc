@@ -1,0 +1,8 @@
+<component name="ArtifactManager">
+  <artifact type="jar" name="JBigNums:jar">
+    <output-path>$PROJECT_DIR$/out/artifacts/JBigNums_jar</output-path>
+    <root id="archive" name="JBigNums.jar">
+      <element id="module-output" name="JBigNums" />
+    </root>
+  </artifact>
+</component>
