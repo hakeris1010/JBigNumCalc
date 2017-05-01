@@ -1,6 +1,8 @@
 package jbignums.GuiCalc;
 
-import jbignums.StringCalculator.StringCalculator;
+import jbignums.CalculatorPlugin.CalculatorPlugin;
+
+import java.util.List;
 
 public interface GUICalculator {
     // Event command codes of the GUI calculator.
@@ -9,10 +11,16 @@ public interface GUICalculator {
         public static final String CALC_EXIT_REQUESTED = "GUI_ExitRequested";
     }
 
-    final class QueryData {
-        public String calcQuery;
-        public long ID;
-    }
+    /**
+     * Gets a list of supported CalcPlugins. Used to examine.
+     * @return - plugin classes.
+     */
+    List<Class> getSupportedCalculatorPlugins();
+
+    /**
+     * Gets the XML document describing the desirable layout.
+     */
+    //XMLObject getLayoutXML();
 
     /**
      * Add an Implementation-defined action event listener.
@@ -26,7 +34,7 @@ public interface GUICalculator {
      * Called when calculation is completed. Sends a result object to GUI for showing.
      * @param res - calculation result.
      */
-    void sendCalculationResult(StringCalculator.Result res);
+    void sendCalculationResult(CalculatorPlugin.Result res);
 
     // TODO: The GuiState might be even not needed in the new model!
     /**

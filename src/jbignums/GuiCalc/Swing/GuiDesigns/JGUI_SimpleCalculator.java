@@ -1,11 +1,12 @@
 package jbignums.GuiCalc.Swing.GuiDesigns;
 
 import jbignums.CalcProperties.GuiCalcState;
+import jbignums.CalculatorPlugin.CalculatorPlugin;
 import jbignums.GuiCalc.Swing.GUICalculatorLayout;
 import jbignums.GuiCalc.Swing.GUIMenu;
-import jbignums.GuiCalc.Swing.GuiState;
-import jbignums.StringCalculator.StringCalculator;
+import jbignums.CalculatorPlugin.StringCalculator.StringCalculator;
 
+import java.util.Arrays;
 import java.util.List;
 import javax.swing.*;
 import javax.swing.event.DocumentEvent;
@@ -177,6 +178,11 @@ public class JGUI_SimpleCalculator extends GUICalculatorLayout {
         public static final boolean TypedInput = false;
     }
 
+    // All supported plugins.
+    private static final List<Class> supportedPlugins = new ArrayList<>(Arrays.asList(
+            StringCalculator.class.getClass()
+    ));
+
     /**
      * = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = =
      * Private fields
@@ -196,12 +202,20 @@ public class JGUI_SimpleCalculator extends GUICalculatorLayout {
 
     /**
      * = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = =
-     * Private methods
-     * <p>
-     * This method fires an event to all of the attached GUI event listeners.
+     * Public methods
+     */
+    public JGUI_SimpleCalculator() {
+    }
+
+    public JGUI_SimpleCalculator(GuiCalcState cState) {
+        create(cState);
+    }
+
+    /**
+     * Fires an event to all of the attached GUI event listeners.
      * - Keep in mind that all listeners will be executed on the GUI Event Dispatch Thread (In this case AWT EDT).
      */
-    public void raiseEventToAttachedListeners(ActionEvent event) {
+    public void dispatchEventToAttachedListeners(ActionEvent event) {
         Runnable task = () -> {
             for (int i = 0; i < listeners.size(); i++) {
                 listeners.get(i).actionPerformed(event);
@@ -213,17 +227,6 @@ public class JGUI_SimpleCalculator extends GUICalculatorLayout {
         } else { // If not EDT, use the "invokeLater()".
             SwingUtilities.invokeLater(task);
         }
-    }
-
-    /**
-     * = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = =
-     * Public methods
-     */
-    public JGUI_SimpleCalculator() {
-    }
-
-    public JGUI_SimpleCalculator(GuiCalcState cState) {
-        create(cState);
     }
 
     /**
@@ -249,14 +252,19 @@ public class JGUI_SimpleCalculator extends GUICalculatorLayout {
      * Before someone should call this, a CALC_QUERY_ENTERED event has to be raised by GUI,
      * requesting calculation start.
      *
-     * @param res - a StringCalculator result object represented in GrylloCalc (or compatible) language.
+     * @param res1 - a StringCalculator result object represented in GrylloCalc (or compatible) language.
      */
-    public synchronized void sendCalculationResult(StringCalculator.Result res) {
+    @Override
+    public synchronized void sendCalculationResult(CalculatorPlugin.Result res1) {
+        if (!StringCalculator.class.isAssignableFrom(res1.getClass()))
+            throw new RuntimeException("Wrong result class! Must be that of StringCalculator!");
+        final StringCalculator.Result res = (StringCalculator.Result) res1;
+
         SwingUtilities.invokeLater(() -> {
-            switch (res.resultType) {
+            switch (res.getResultType()) {
                 case StringCalculator.ResultType.INTERMEDIATE_DATA:
                     // Process the progress - update progress bars and stuff, if needed.
-                    System.out.println("Got intermediate results from the Calculation: " + res.resultType);
+                    System.out.println("Got intermediate results from the Calculation: " + res.getResultType());
                     break;
                 case StringCalculator.ResultType.END:
                     // Update the result field!
@@ -265,6 +273,15 @@ public class JGUI_SimpleCalculator extends GUICalculatorLayout {
                 //...
             }
         });
+    }
+
+    /**
+     * Returns supported plugins
+     *
+     * @return - class list
+     */
+    public List<Class> getSupportedCalculatorPlugins() {
+        return supportedPlugins;
     }
 
     //Call when end result is ready. It's just a wrapper over sendCalculationResult
@@ -305,8 +322,6 @@ public class JGUI_SimpleCalculator extends GUICalculatorLayout {
         if (guiCreated)
             throw new RuntimeException("GUI can only be create()'d once!");
         guiCreated = true;
-
-        createMenuBarItems();
 
         // Set the State pointer. We will use this to signal Main about events.
         state = cState;
@@ -391,9 +406,12 @@ public class JGUI_SimpleCalculator extends GUICalculatorLayout {
         CalcOutput.setFont(outputFont);
         CalcOutput.setText("Baba");
 
+        // Set the InputBox editable by default.
+        CalcInput.setEditable(Defaults.TypedInput);
+
         //================  Add related menu items  ================//
         // Add menu items and listeners for this Layout.
-        //createMenuBarItems();
+        createMenuBarItems();
     }
 
     // Create the control items in da MenuBar. GUIState must have been set at this point.

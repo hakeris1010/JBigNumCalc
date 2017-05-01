@@ -46,7 +46,7 @@ public class SwingGuiStarter {
     /**
      * Must be called from EDT
      */
-    private void setNewGuiLayout(Class layoutClass){
+    private void setNewGuiLayout(Class layoutClass, boolean addMenuItems){
         if( ! GUICalculatorLayout.class.isAssignableFrom(layoutClass) ) // If this is wrong class
             throw new RuntimeException("Wrong Layout class passed.");
 
@@ -78,6 +78,12 @@ public class SwingGuiStarter {
 
         // Set as current
         currentLayout = newLayout;
+
+        if(addMenuItems) {
+            for (GUIMenu.MenuItem mi : currentLayout.getMenuItems()) {
+                currentMenu.addMenuItem(mi);
+            }
+        }
 
         // Remove all components from previous layout's ContentPane, and reset Swing.
         this.frame.getContentPane().removeAll();
@@ -119,6 +125,7 @@ public class SwingGuiStarter {
             }
 
             currentMenu.addActionListener((e) -> {
+                // Perform task if Layout Changed in menu.
                 if(e.getActionCommand() == GuiCalcMenu.Commands.LayoutChanged){
                     if(GuiCalcProps.CalcLayout.class.isAssignableFrom( e.getSource().getClass() )){
                         GuiCalcProps.CalcLayout layt = (GuiCalcProps.CalcLayout)(e.getSource());
@@ -132,13 +139,8 @@ public class SwingGuiStarter {
                             }
                         }
 
-                        // Add this layout as an active one
-                        setNewGuiLayout(layt.getDesign());
-
-                        // Now add the new layout's menu items to the GuiMenu
-                        for(GUIMenu.MenuItem mi : currentLayout.getMenuItems()){
-                            currentMenu.addMenuItem(mi);
-                        }
+                        // Add this layout as an active one, and add new menu items.
+                        setNewGuiLayout(layt.getDesign(), true);
 
                         System.out.println("Layout successfully changed!");
                     }
@@ -149,7 +151,7 @@ public class SwingGuiStarter {
 
             //==============================================================================//
             // Initialize and Set Layout
-            setNewGuiLayout( GuiCalcProps.Defaults.GuiLayout.getDesign() );
+            setNewGuiLayout( GuiCalcProps.Defaults.GuiLayout.getDesign(), true );
 
             // Set cosmetic things
             frame.setTitle("JBigNums Calculator");
