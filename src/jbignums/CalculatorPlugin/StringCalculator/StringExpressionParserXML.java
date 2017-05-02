@@ -6,6 +6,10 @@ import javax.xml.parsers.ParserConfigurationException;
 import javax.xml.stream.*;
 import javax.xml.stream.events.XMLEvent;
 import java.io.*;
+import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.List;
+
 import org.w3c.dom.Document;
 import org.w3c.dom.Node;
 
@@ -32,6 +36,41 @@ import org.w3c.dom.Node;
  * - We get this by traversing the string while searching for numbers and operations.
  */
 public class StringExpressionParserXML {
+    public static class CalcNode{
+        public static final class Types{
+            int DEFAULT = 0;
+            int NUMBER = 1;
+            int BASIC_OP = 2;
+            int FUNCTION = 3;
+            int BLOCK = 4;
+        }
+
+        public int type;
+        public String data;
+        public BigDecimal number;
+
+        private final List<CalcNode> params = new ArrayList<>();
+        private final List<CalcNode> childs = new ArrayList<>();
+
+        public CalcNode(){ }
+        public CalcNode(int nodeType, String sData, BigDecimal numb){
+            type = nodeType;
+            data = sData;
+            number = numb;
+        }
+
+        public void addParam(CalcNode param){
+            params.add(param);
+        }
+        public void addChild(CalcNode child){
+            childs.add(child);
+        }
+        public List<CalcNode> getParams(){ return params; }
+        public List<CalcNode> getChilds(){ return childs; }
+    }
+
+    private CalcNode rootNode;
+
     /*private final XMLOutputFactory outputFactory = XMLOutputFactory.newInstance();
     private final XMLEventFactory  eventFactory  = XMLEventFactory.newInstance();
 
@@ -54,7 +93,7 @@ public class StringExpressionParserXML {
         }
     }
 
-    public Document parseStringToXML(String expression) throws XMLStreamException {
+    public Document parseStringToXML(String expression) {
         synchronized (this){
             if(isWorking || documentBuilder==null){
                 System.out.println(isWorking ? "Work is already in progress!" : "DocumentBuilder is NULL!");
@@ -63,10 +102,10 @@ public class StringExpressionParserXML {
             isWorking = true;
         }
 
-        calcDoc = documentBuilder.newDocument();
+        /*calcDoc = documentBuilder.newDocument();
         calcDoc.appendChild( calcDoc.createElement("Nyaa") );
 
-        System.out.print(calcDoc.getElementById("1"));
+        System.out.print(calcDoc.getElementById("1"));*/
 
 
         synchronized (this){
