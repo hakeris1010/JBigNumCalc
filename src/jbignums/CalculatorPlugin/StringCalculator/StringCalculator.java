@@ -33,11 +33,16 @@ public class StringCalculator extends AsyncQueueCalculatorPlugin{
         public String expr;
         public int calcMode;
 
-        Query(){ super(); }
-        Query(String expression, int mode, int qType, long taskID1){
+        public Query(){ super(); }
+        public Query(String expression, int mode, int qType, long taskID1){
             super(qType, taskID1);
             expr = expression;
             calcMode = mode;
+        }
+
+        @Override
+        public String toString(){
+            return super.toString()+"\n Expr: "+expr+"\n calcMode: "+calcMode;
         }
     }
 
@@ -47,13 +52,18 @@ public class StringCalculator extends AsyncQueueCalculatorPlugin{
         public String strResult;
         public BigDecimal bigResult;
 
-        Result(){ super(); }
-        Result(int resType, long taskID, DataType dType, double dRes, String sRes, BigDecimal bigRes){
+        public Result(){ super(); }
+        public Result(int resType, long taskID, DataType dType, double dRes, String sRes, BigDecimal bigRes){
             super(resType, taskID);
             dataType = dType;
             dblResult = dRes;
             strResult = sRes;
             bigResult = bigRes;
+        }
+
+        @Override
+        public String toString(){
+            return super.toString()+"\n DataType: "+dataType.name()+"\n dblResult: "+dblResult+"\n strResult: "+strResult;
         }
     }
 
@@ -64,7 +74,6 @@ public class StringCalculator extends AsyncQueueCalculatorPlugin{
     protected volatile int calcMode = 0;
 
     protected Result lastResult;
-
 
     /** = = = = = == = = = = == = = = = == = = = = == = = = = = //
      * Constructors
@@ -110,6 +119,8 @@ public class StringCalculator extends AsyncQueueCalculatorPlugin{
         if(resultQueue == null || lastQuery == null || this.isCalculating())
             throw new RuntimeException("Can't start calculation. Missing essential parameters or currently calculating.");
 
+        System.out.println("[StringCalculator.startCalculation()]: Current query values: "+lastQuery);
+
         // Mark the start of calculation (Superclass-handled).
         setCalculationStart();
 
@@ -122,6 +133,7 @@ public class StringCalculator extends AsyncQueueCalculatorPlugin{
 
         // Push result to shared queue. Many calculator are using it, but instance is determined using ID field.
         // No syncing is needed, because BlockingQueue is thread-safe.
+        System.out.println("[StringCalculator.startCalculation()]: pushing Result to queue: "+datLastRes);
         resultQueue.add( datLastRes );
 
         // At the end, perform the ending inter-thread jobs of setting specific variables and stuff.
@@ -130,6 +142,7 @@ public class StringCalculator extends AsyncQueueCalculatorPlugin{
         }
         // Mark the end of calculation (Superclass-handled).
         // Notifies the waiters and sets isCalculating to false.
+        System.out.print("[StringCalculator.startCalculation()]: Ending Calculation...\n");
         setCalculationEnd();
 
         return lastResult;

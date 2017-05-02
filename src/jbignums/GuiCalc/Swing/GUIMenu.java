@@ -1,6 +1,6 @@
 package jbignums.GuiCalc.Swing;
 
-import jbignums.CalcProperties.GuiCalcState;
+import jbignums.CalcProperties.AsyncCalcWorker;
 
 import javax.swing.*;
 import java.awt.event.ActionListener;
@@ -125,7 +125,7 @@ public abstract class GUIMenu {
      * Creation function. This is overridable - allows different menus to work.
      * @param state - GUIState object
      */
-    public abstract void create(GuiCalcState state);
+    public abstract void create(AsyncCalcWorker state);
 
     /**
      * Adds an active action listenr

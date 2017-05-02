@@ -1,6 +1,6 @@
 package jbignums.GuiCalc.Swing;
 
-import jbignums.CalcProperties.GuiCalcState;
+import jbignums.CalcProperties.AsyncCalcWorker;
 
 import javax.swing.*;
 import java.awt.event.ActionEvent;
@@ -29,14 +29,15 @@ public class GuiCalcMenu extends GUIMenu {
     // Event commands.
     public static final class Commands{
         public static final String LayoutChanged = "GuiMenu_LayoutChanged";
+        public static final String ExitRequested = "GuiMenu_ExitRequested";
     }
 
-    private GuiCalcState state;
+    private AsyncCalcWorker state;
     private List<ActionListener> listeners = Collections.synchronizedList( new ArrayList<>() );
 
     // Dynamically construct the new menu
     public GuiCalcMenu(){ }
-    public GuiCalcMenu(GuiCalcState state) {
+    public GuiCalcMenu(AsyncCalcWorker state) {
         create(state);
     }
 
@@ -57,17 +58,19 @@ public class GuiCalcMenu extends GUIMenu {
     }
 
     @Override
-    public void create(GuiCalcState guiState){
+    public void create(AsyncCalcWorker guiState){
         state = guiState;
 
         // As this method must be called on EDT, we create Swing menu objects here.
         mubar = new JMenuBar();
 
         // Create root menus, and add them to a list.
+        JMenu fileMenu = DefaultMenus.File.getJMenu();
         JMenu viewMenu = DefaultMenus.View.getJMenu();
         JMenu editMenu = DefaultMenus.Edit.getJMenu();
         JMenu helpMenu = DefaultMenus.Help.getJMenu();
 
+        rootMenus.add( fileMenu );
         rootMenus.add( viewMenu );
         rootMenus.add( editMenu );
         rootMenus.add( helpMenu );
@@ -85,6 +88,10 @@ public class GuiCalcMenu extends GUIMenu {
                 case "Help_About":
                     JOptionPane.showMessageDialog(null, SwingGuiStarter.getAboutMessage(), "About", JOptionPane.INFORMATION_MESSAGE);
                     break;
+                case "File_Exit":
+                    // Exit button pressed. Send the ExitRequested event.
+                    fireEventToListeners( new ActionEvent(this, ActionEvent.ACTION_PERFORMED, Commands.ExitRequested) );
+                    break;
             }
         };
 
@@ -96,6 +103,13 @@ public class GuiCalcMenu extends GUIMenu {
                 }
             }
         };
+
+        //=============== View Menu. ===============//
+        // Add the Exit button.
+        JMenuItem menuItem = new JMenuItem("Exit", KeyEvent.VK_E);
+        menuItem.setActionCommand("File_Exit");
+        menuItem.addActionListener(actl);
+        fileMenu.add(menuItem);
 
         //=============== View Menu. ===============//
         // Add all options for layouts.
@@ -116,7 +130,7 @@ public class GuiCalcMenu extends GUIMenu {
 
         //=============== Edit Menu. ===============//
         // History view
-        JMenuItem menuItem = new JMenuItem("View History", KeyEvent.VK_H);
+        menuItem = new JMenuItem("View History", KeyEvent.VK_H);
         menuItem.setActionCommand("Edit_History");
         menuItem.addActionListener(actl);
         editMenu.add(menuItem);

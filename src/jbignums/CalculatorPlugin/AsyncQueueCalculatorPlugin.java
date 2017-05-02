@@ -36,6 +36,11 @@ public abstract class AsyncQueueCalculatorPlugin implements CalculatorPlugin {
             resultType = resultType1;
             taskID = taskID1;
         }
+
+        @Override
+        public String toString(){
+            return "\n"+this.getClass().getName()+":\n TaskID: "+taskID+"\n resultType:"+resultType;
+        }
     }
 
     /**
@@ -58,6 +63,11 @@ public abstract class AsyncQueueCalculatorPlugin implements CalculatorPlugin {
 
         public Query(){ }
         public Query(int qType, long taskID1){ queryType = qType; taskID = taskID1; }
+
+        @Override
+        public String toString(){
+            return "\n"+this.getClass().getName()+":\n TaskID: "+taskID+"\n queryType:"+queryType;
+        }
     }
 
     /** ===========================================================================

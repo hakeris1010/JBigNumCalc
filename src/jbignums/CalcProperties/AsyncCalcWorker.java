@@ -1,6 +1,7 @@
 package jbignums.CalcProperties;
 
 import jbignums.CalculatorPlugin.AsyncQueueCalculatorPlugin;
+import jbignums.CalculatorPlugin.StringCalculator.StringCalculator;
 
 import java.util.*;
 import java.util.concurrent.ExecutorService;
@@ -13,11 +14,11 @@ import java.util.concurrent.atomic.AtomicBoolean;
  * Main state class API. The connection between GuiLand and MainLand is managed through this object.
  * - Working prinicple: Each interested thread registers Evt. Listeners, listening for specific
  *   CalStateEvent actionCommands, informing about state changes.
- * - Internally, GuiCalcState uses SwingWorker API to launch worker threads when EDT thread issues a
+ * - Internally, AsyncCalcWorker uses SwingWorker API to launch worker threads when EDT thread issues a
  *   specific command by calling the appropriate method.
  */
 
-public class GuiCalcState  //Thread-safe.
+public class AsyncCalcWorker  //Thread-safe.
 {
     /** = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = =
      * Constants
@@ -113,7 +114,7 @@ public class GuiCalcState  //Thread-safe.
     // Calculator-specific states.
     private ArrayList<AsyncQueueCalculatorPlugin.Query> queryHistory = new ArrayList<>();
 
-    // UPDATE: GUI and Layouts are no longer managed in GuiCalcState.
+    // UPDATE: GUI and Layouts are no longer managed in AsyncCalcWorker.
 
     /** = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = =
      * Private Methods
@@ -121,57 +122,20 @@ public class GuiCalcState  //Thread-safe.
      * ============ Initialization ===========
      * Launch control thread and initialize variables in a constructor.
      */
-    //public GuiCalcState()
+    //public AsyncCalcWorker( )
     {
         // At first, add the basic ID=0 calculator to the array.
-        calculatorClasses.add(AsyncQueueCalculatorPlugin.class.getClass());
+        calculatorClasses.add(StringCalculator.class.getClass());
 
         /* TODO: Make control thread not embedded, but launchable by user as a Worker.
          *   - This way the complexity of raising events on specific thread, and overhead
          *     of 2 control threads will be eliminated.
          *   - The User's worker thread will be framework-specific (Swing worker or Android worker).
-         *   - The worker can just use the GuiCalcState's functions such as takeResult, taking intermediate
+         *   - The worker can just use the AsyncCalcWorker's functions such as takeResult, taking intermediate
          *     data from the BlockingQueue.
          *   - The New Tasks can be added just as before, because methods for that are already implemented.
          */
 
-
-        /**
-         * Create and Launch the Task Control thread.
-         * This thread polls all of the tasks in ThreadPool for intermediate (or final) results,
-         * takes them from queues, and fires appropriate events to the attached listeners on EDT.
-         */
-        /*ControlThread = new Thread( () -> {
-            while(!needToShutDown.get()){
-                // Check for shutdown at every iteration.
-                if(needToShutDown.get()) break;
-
-                AsyncQueueCalculatorPlugin.Result res = null;
-                try {
-                    // Wait until the result appears at the queue.
-                    // If terminate request is passed on this object, the queue will be interrupted.
-                    res = calcResultQueue.take();
-                } catch (InterruptedException e) {
-                    e.printStackTrace();
-                }
-
-                if(res != null){ // Got result --> invoke all listeners.
-                    XEvent ae = null;
-                    // Check the Result Type to determine an event code.
-                    if((res.resultType & AsyncQueueCalculatorPlugin.ResultType.END) == AsyncQueueCalculatorPlugin.ResultType.END)
-                        ae = new XEvent(res, XEvent.ACTION_PERFORMED, Commands.CALC_DONE);
-                    else if((res.resultType & AsyncQueueCalculatorPlugin.ResultType.INTERMEDIATE_DATA) == AsyncQueueCalculatorPlugin.ResultType.INTERMEDIATE_DATA){
-                        ae = new XEvent(res, XEvent.ACTION_PERFORMED, Commands.CALC_PROGRESS_VALUE);
-                    }
-                    // Fire the event!
-                    if(ae != null) {
-                        //this.raiseEvent_OnEventDispatchThread( ae );
-                        this.dispatchXEvent( ae );
-                    }
-                }
-            }
-        } );
-        ControlThread.start();*/
     }
 
     /* = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = =
@@ -236,10 +200,14 @@ public class GuiCalcState  //Thread-safe.
         if(calcID < 0 || calcID >= calculatorClasses.size())
             throw new RuntimeException("Wrong index specified on launchNewCalculationTask()");
 
+        System.out.println("Trying to create new instance of calculator "+calcID);
+        System.out.println("Class type:"+calculatorClasses.get(calcID).getName());
         // Create a new instance of a Calculator of given class.
         AsyncQueueCalculatorPlugin newCalc;
         try {
-            newCalc = (AsyncQueueCalculatorPlugin)(calculatorClasses.get(calcID).newInstance());
+            //TODO: Bug! Exception while creating new instance.
+            //newCalc = (AsyncQueueCalculatorPlugin)(calculatorClasses.get(calcID).newInstance());
+            newCalc = new StringCalculator();
         } catch (Exception e) {
             System.out.println("Can't cast new object to AsyncQueueCalculatorPlugin.");
             e.printStackTrace();
@@ -290,5 +258,20 @@ public class GuiCalcState  //Thread-safe.
         }
     }
 
-    public synchronized ArrayList<AsyncQueueCalculatorPlugin.Query> getQueryHistory(){ return queryHistory; }
+    /**
+     * Method returns TRUE if quit message has been posted, and needToShutDown is true.
+     * @return - needToShutDown
+     */
+    public boolean isShuttingDown(){
+        return needToShutDown.get();
+    }
+
+    /**
+     * Gets the list of queries that have been sent to this object.
+     * @return - query history list.
+     */
+    public synchronized ArrayList<AsyncQueueCalculatorPlugin.Query> getQueryHistory(){
+        return queryHistory;
+    }
+
 }

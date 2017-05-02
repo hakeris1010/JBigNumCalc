@@ -5,7 +5,8 @@
  */
 package jbignums.GuiCalc.Swing;
 
-import jbignums.CalcProperties.GuiCalcState;
+import jbignums.CalcProperties.AsyncCalcWorker;
+import jbignums.CalculatorPlugin.AsyncQueueCalculatorPlugin;
 import jbignums.GuiCalc.GUICalculator;
 
 import java.awt.event.*;
@@ -30,7 +31,8 @@ public class SwingGuiStarter {
 
     private JFrame frame;
     static private int frameCount  = 0;
-    private GuiCalcState calcState;
+    private AsyncCalcWorker calcState;
+    private Thread controlThread;
 
     // Current layout and Menu
     private GUICalculatorLayout currentLayout;
@@ -70,9 +72,22 @@ public class SwingGuiStarter {
                     frame.dispatchEvent(new WindowEvent(frame, WindowEvent.WINDOW_CLOSING));
                     break;
                 case GUICalculator.Commands.CALC_QUERY_ENTERED:
-                    // Calculation query has been entered. Pass it to GuiCalcState for processing.
-                    System.out.println("Calculation entered.");
+                    // Calculation query has been entered. Pass it to AsyncCalcWorker for processing.
+                    System.out.println("Calculation query entered.");
+                    if(!AsyncQueueCalculatorPlugin.Query.class.isAssignableFrom( e.getSource().getClass() )){
+                        throw new RuntimeException("Wrong class passed as a CALC_QUERY_ENTERED source argument.");
+                    }
+                    // get the query if it's valid.
+                    AsyncQueueCalculatorPlugin.Query query = (AsyncQueueCalculatorPlugin.Query)(e.getSource());
+
+                    // Create new task in the AsyncCalcWorker, and get ID.
+                    // Currently Multi-GUI is not supported, so ID isn't used.
+                    long taskId = calcState.launchNewCalculationTask(query);
+                    if(taskId == 0){
+                        System.out.print("Error on calculation task entering!");
+                    }
                     break;
+                //...
             }
         });
 
@@ -98,12 +113,35 @@ public class SwingGuiStarter {
      */
     public void setupAndShowGui() {
         // Setup GUI. Everything must be done on EDT thread, so use "invokeLater"
-
         SwingUtilities.invokeLater( () -> {
             //==============================================================================//
-            // Create a Frame and GuiCalcState.
+            /* Setup the asynchronous calculator worker, and start the Control Thread
+             *
+             * This thread will take care of getting results from the AsyncCalcWorker,
+             * and sending them for displaying in the current GUICalculatorLayout.
+             * BlockingQueue is used, so the thread blocks when there's no result pending.
+             */
+            calcState = new AsyncCalcWorker();
+            controlThread = new Thread(() -> {
+                while( !calcState.isShuttingDown() ) {
+                    // Take the first pending result, and send it to active GUIs by it's ID.
+                    AsyncQueueCalculatorPlugin.Result res = calcState.takeResultFromQueue();
+                    System.out.println("[SwingGuiStarter control thread]: Taken Result! Result: " + res.getClass().getName());
+
+                    // Currently, no Multi-GUI is implemented, so no ID processing needed.
+                    // We can just pass the result to the active Layout.
+                    if (res != null) {
+                        currentLayout.sendCalculationResult(res);
+                    }
+                }
+                // Shutdown condition is met at this point.
+                System.out.print("[SwingGuiStarter control thread] Shutdown requested from calcState. Returning.\n");
+            });
+            controlThread.start();
+
+            //==============================================================================//
+            // Create a main JFrame.
             frame = new JFrame();
-            calcState = new GuiCalcState();
 
             // Set the default Look and Feel for this layout.
             try{
@@ -126,24 +164,35 @@ public class SwingGuiStarter {
 
             currentMenu.addActionListener((e) -> {
                 // Perform task if Layout Changed in menu.
-                if(e.getActionCommand() == GuiCalcMenu.Commands.LayoutChanged){
-                    if(GuiCalcProps.CalcLayout.class.isAssignableFrom( e.getSource().getClass() )){
-                        GuiCalcProps.CalcLayout layt = (GuiCalcProps.CalcLayout)(e.getSource());
-                        System.out.println("Received \"Gui layout changed\" event. The new GUI:"+layt.getName());
+                switch (e.getActionCommand()) {
+                    case GuiCalcMenu.Commands.LayoutChanged:
+                        if (GuiCalcProps.CalcLayout.class.isAssignableFrom( e.getSource().getClass()) ) {
+                            GuiCalcProps.CalcLayout layt = (GuiCalcProps.CalcLayout) (e.getSource());
+                            System.out.println("Received \"Gui layout changed\" event. The new GUI:" + layt.getName());
 
-                        // Firstly, remove the old layout's menu items from the GUIMenu
-                        for(GUIMenu.MenuItem mi : currentLayout.getMenuItems()){
-                            JComponent jk = mi.getJComponent();
-                            if(jk != null){
-                                jk.getParent().remove(jk);
+                            // Firstly, remove the old layout's menu items from the GUIMenu
+                            // TODO: Move the menu item removal to the old layout's dispose() function.
+                            //       The GUILayout's abstract class will have dispose() method by default,
+                            //       taking care of all the stuff.
+                            for (GUIMenu.MenuItem mi : currentLayout.getMenuItems()) {
+                                JComponent jk = mi.getJComponent();
+                                if (jk != null) {
+                                    jk.getParent().remove(jk);
+                                }
                             }
+
+                            // Add this layout as an active one, and add new menu items.
+                            setNewGuiLayout(layt.getDesign(), true);
+
+                            System.out.println("Layout successfully changed!");
                         }
+                        break;
 
-                        // Add this layout as an active one, and add new menu items.
-                        setNewGuiLayout(layt.getDesign(), true);
-
-                        System.out.println("Layout successfully changed!");
-                    }
+                    case GuiCalcMenu.Commands.ExitRequested:
+                        // Exit requested from menu - dispatch exit event on frame.
+                        frame.dispatchEvent(new WindowEvent(frame, WindowEvent.WINDOW_CLOSING));
+                        break;
+                    //...
                 }
             });
 

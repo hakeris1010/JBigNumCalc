@@ -1,6 +1,6 @@
 package jbignums.GuiCalc.Swing.GuiDesigns;
 
-import jbignums.CalcProperties.GuiCalcState;
+import jbignums.CalcProperties.AsyncCalcWorker;
 import jbignums.CalculatorPlugin.CalculatorPlugin;
 import jbignums.GuiCalc.Swing.GUICalculatorLayout;
 import jbignums.GuiCalc.Swing.GUIMenu;
@@ -15,9 +15,29 @@ import java.awt.*;
 import java.awt.event.*;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.Consumer;
 
 /**
  * Created by Kestutis on 2017-04-18.
+ */
+
+/**
+ * New model of separating GUI from core is implemented.
+ * - In this model, whole GUI is a Component, which fires events and whose state
+ * can be configured with setter methods.
+ * <p>
+ * - This model, which is based on principle "Event Raiser lives Longer than the Target".
+ * - In this case, the Raiser is the Native EDT, which lives whole application runtime.
+ * - The GUIDesignLayout (e.g. current) lives shorter, and is a component which fires specific events.
+ * - By using this model, we avoid memory leaks, and the problems of removing old layout's
+ * event listeners from the AsyncCalcWorker.
+ * - THE BIGGEST advantage: GUI is totally separated from the core!
+ * <p>
+ * -*-*-*-*-*-*-
+ * - This method takes care of all the events fired onto this layout.
+ * - It's just like, for example, the main EDT dispatcher invoking JButton's private onEvent method.
+ * and that method calling all attached JButton's ActionListeners.
  */
 
 public class JGUI_SimpleCalculator extends GUICalculatorLayout {
@@ -70,18 +90,22 @@ public class JGUI_SimpleCalculator extends GUICalculatorLayout {
         MMinusButton.setText("M-");
         Functions.add(MMinusButton, new com.intellij.uiDesigner.core.GridConstraints(0, 4, 1, 1, com.intellij.uiDesigner.core.GridConstraints.ANCHOR_CENTER, com.intellij.uiDesigner.core.GridConstraints.FILL_BOTH, com.intellij.uiDesigner.core.GridConstraints.SIZEPOLICY_CAN_SHRINK | com.intellij.uiDesigner.core.GridConstraints.SIZEPOLICY_CAN_GROW, com.intellij.uiDesigner.core.GridConstraints.SIZEPOLICY_CAN_SHRINK | com.intellij.uiDesigner.core.GridConstraints.SIZEPOLICY_CAN_GROW, null, null, null, 0, false));
         BackspaceButton = new JButton();
+        BackspaceButton.setActionCommand("backsp");
         BackspaceButton.setText("<--");
         Functions.add(BackspaceButton, new com.intellij.uiDesigner.core.GridConstraints(1, 0, 1, 1, com.intellij.uiDesigner.core.GridConstraints.ANCHOR_CENTER, com.intellij.uiDesigner.core.GridConstraints.FILL_BOTH, com.intellij.uiDesigner.core.GridConstraints.SIZEPOLICY_CAN_SHRINK | com.intellij.uiDesigner.core.GridConstraints.SIZEPOLICY_CAN_GROW, com.intellij.uiDesigner.core.GridConstraints.SIZEPOLICY_CAN_SHRINK | com.intellij.uiDesigner.core.GridConstraints.SIZEPOLICY_CAN_GROW, null, null, null, 0, false));
         CEButton = new JButton();
         CEButton.setText("CE");
         Functions.add(CEButton, new com.intellij.uiDesigner.core.GridConstraints(1, 1, 1, 1, com.intellij.uiDesigner.core.GridConstraints.ANCHOR_CENTER, com.intellij.uiDesigner.core.GridConstraints.FILL_BOTH, com.intellij.uiDesigner.core.GridConstraints.SIZEPOLICY_CAN_SHRINK | com.intellij.uiDesigner.core.GridConstraints.SIZEPOLICY_CAN_GROW, com.intellij.uiDesigner.core.GridConstraints.SIZEPOLICY_CAN_SHRINK | com.intellij.uiDesigner.core.GridConstraints.SIZEPOLICY_CAN_GROW, null, null, null, 0, false));
         C_Button = new JButton();
+        C_Button.setActionCommand("C_");
         C_Button.setText("C");
         Functions.add(C_Button, new com.intellij.uiDesigner.core.GridConstraints(1, 2, 1, 1, com.intellij.uiDesigner.core.GridConstraints.ANCHOR_CENTER, com.intellij.uiDesigner.core.GridConstraints.FILL_BOTH, com.intellij.uiDesigner.core.GridConstraints.SIZEPOLICY_CAN_SHRINK | com.intellij.uiDesigner.core.GridConstraints.SIZEPOLICY_CAN_GROW, com.intellij.uiDesigner.core.GridConstraints.SIZEPOLICY_CAN_SHRINK | com.intellij.uiDesigner.core.GridConstraints.SIZEPOLICY_CAN_GROW, null, null, null, 0, false));
         InvertButton = new JButton();
+        InvertButton.setActionCommand("plusMinus");
         InvertButton.setText("±");
         Functions.add(InvertButton, new com.intellij.uiDesigner.core.GridConstraints(1, 3, 1, 1, com.intellij.uiDesigner.core.GridConstraints.ANCHOR_CENTER, com.intellij.uiDesigner.core.GridConstraints.FILL_BOTH, com.intellij.uiDesigner.core.GridConstraints.SIZEPOLICY_CAN_SHRINK | com.intellij.uiDesigner.core.GridConstraints.SIZEPOLICY_CAN_GROW, com.intellij.uiDesigner.core.GridConstraints.SIZEPOLICY_CAN_SHRINK | com.intellij.uiDesigner.core.GridConstraints.SIZEPOLICY_CAN_GROW, null, null, null, 0, false));
         SqrtButton = new JButton();
+        SqrtButton.setActionCommand("sqrt");
         SqrtButton.setText("√");
         Functions.add(SqrtButton, new com.intellij.uiDesigner.core.GridConstraints(1, 4, 1, 1, com.intellij.uiDesigner.core.GridConstraints.ANCHOR_CENTER, com.intellij.uiDesigner.core.GridConstraints.FILL_BOTH, com.intellij.uiDesigner.core.GridConstraints.SIZEPOLICY_CAN_SHRINK | com.intellij.uiDesigner.core.GridConstraints.SIZEPOLICY_CAN_GROW, com.intellij.uiDesigner.core.GridConstraints.SIZEPOLICY_CAN_SHRINK | com.intellij.uiDesigner.core.GridConstraints.SIZEPOLICY_CAN_GROW, null, null, null, 0, false));
         Others = new JPanel();
@@ -146,6 +170,7 @@ public class JGUI_SimpleCalculator extends GUICalculatorLayout {
         PlusButton.setText("+");
         Operations.add(PlusButton, new com.intellij.uiDesigner.core.GridConstraints(3, 0, 1, 1, com.intellij.uiDesigner.core.GridConstraints.ANCHOR_CENTER, com.intellij.uiDesigner.core.GridConstraints.FILL_BOTH, com.intellij.uiDesigner.core.GridConstraints.SIZEPOLICY_CAN_SHRINK | com.intellij.uiDesigner.core.GridConstraints.SIZEPOLICY_CAN_GROW, com.intellij.uiDesigner.core.GridConstraints.SIZEPOLICY_CAN_SHRINK | com.intellij.uiDesigner.core.GridConstraints.SIZEPOLICY_CAN_GROW, null, null, null, 0, false));
         EqualsButton = new JButton();
+        EqualsButton.setActionCommand("equals");
         EqualsButton.setText("=");
         Operations.add(EqualsButton, new com.intellij.uiDesigner.core.GridConstraints(2, 1, 2, 1, com.intellij.uiDesigner.core.GridConstraints.ANCHOR_CENTER, com.intellij.uiDesigner.core.GridConstraints.FILL_BOTH, com.intellij.uiDesigner.core.GridConstraints.SIZEPOLICY_CAN_SHRINK | com.intellij.uiDesigner.core.GridConstraints.SIZEPOLICY_CAN_GROW, com.intellij.uiDesigner.core.GridConstraints.SIZEPOLICY_CAN_SHRINK | com.intellij.uiDesigner.core.GridConstraints.SIZEPOLICY_WANT_GROW, null, null, null, 0, false));
         final JSeparator separator1 = new JSeparator();
@@ -162,7 +187,7 @@ public class JGUI_SimpleCalculator extends GUICalculatorLayout {
         return RootPanel;
     }
 
-    //TODO: Whole GUI - One Object. GuiCalcState will no longer hold MenuBar and stuff.
+    //TODO: Whole GUI - One Object. AsyncCalcWorker will no longer hold MenuBar and stuff.
 
     /**
      * ====================================================================
@@ -187,35 +212,60 @@ public class JGUI_SimpleCalculator extends GUICalculatorLayout {
      * = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = =
      * Private fields
      */
-    // The GuiCalcState, which we pass in Constructor.
-    // We signal the main threads about events here.
-    private GuiCalcState state;
     // a bool which is set the first time create() method is called.
     private volatile boolean guiCreated = false;
+    private AtomicBoolean nowCalculating = new AtomicBoolean(false);
 
     // A List where we'll store MenuBar items belonging to this layout.
     // So on LayoutChanged event we could remove them from the menu bar.
-    private ArrayList<GUIMenu.MenuItem> layoutMenuItems = new ArrayList<>();
+    private final List<GUIMenu.MenuItem> layoutMenuItems = Collections.synchronizedList(new ArrayList<>());
 
     // ActionListeners attached to this layout (by a state or an initial thread)
     private final List<ActionListener> listeners = Collections.synchronizedList(new ArrayList<>());
 
+    private String currentQuery = "";
+    private StringCalculator.Query calcutatedQuery;
+
     /**
      * = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = =
-     * Public methods
+     * Private methods
      */
-    public JGUI_SimpleCalculator() {
+
+    private void callForAllComponents(Component root, Consumer<Component> func, List<Component> exclusions) {
+        boolean isExcluded = false;
+        if (exclusions != null) {
+            for (Component ex : exclusions) {
+                if (root == ex) {
+                    isExcluded = true;
+                    break;
+                }
+            }
+        }
+        if (!isExcluded)
+            func.accept(root); // Call for current component.
+
+        if (root instanceof Container) { // If this component is a container, also call for all childs.
+            for (Component com : ((Container) root).getComponents()) {
+                callForAllComponents(com, func, exclusions);
+            }
+        }
     }
 
-    public JGUI_SimpleCalculator(GuiCalcState cState) {
-        create(cState);
+    private void updateInputWithCharIfValid(char kc, boolean updateGuiField) {
+        // Check for Valid characters: 1,2..9, +,-,*,/,(,),=,enter
+        if ((kc >= '0' && kc <= '9') || kc == '+' || kc == '-' || kc == '*' || kc == '/' ||
+                kc == '.' || kc == ',' || kc == '(' || kc == ')' || kc == '^' || kc == '%') {
+            currentQuery += kc;
+            if (updateGuiField)
+                CalcInput.setText(currentQuery);
+        }
     }
 
     /**
      * Fires an event to all of the attached GUI event listeners.
      * - Keep in mind that all listeners will be executed on the GUI Event Dispatch Thread (In this case AWT EDT).
      */
-    public void dispatchEventToAttachedListeners(ActionEvent event) {
+    private void dispatchEventToAttachedListeners(ActionEvent event) {
         Runnable task = () -> {
             for (int i = 0; i < listeners.size(); i++) {
                 listeners.get(i).actionPerformed(event);
@@ -230,22 +280,32 @@ public class JGUI_SimpleCalculator extends GUICalculatorLayout {
     }
 
     /**
-     * New model of separating GUI from core is implemented.
-     * - In this model, whole GUI is a Component, which fires events and whose state
-     *   can be configured with setter methods.
-     *
-     * - This model, which is based on principle "Event Raiser lives Longer than the Target".
-     * - In this case, the Raiser is the Native EDT, which lives whole application runtime.
-     * - The GUIDesignLayout (e.g. current) lives shorter, and is a component which fires specific events.
-     * - By using this model, we avoid memory leaks, and the problems of removing old layout's
-     *   event listeners from the GuiCalcState.
-     * - THE BIGGEST advantage: GUI is totally separated from the core!
-     *
-     * -*-*-*-*-*-*-
-     * - This method takes care of all the events fired onto this layout.
-     * - It's just like, for example, the main EDT dispatcher invoking JButton's private onEvent method.
-     *   and that method calling all attached JButton's ActionListeners.
+     * Fires a "QUERY_ENTERED" event with current query, and performs tasks of getting ready for result.
      */
+    private synchronized void submitCurrentQuery(boolean validate) {
+        if (validate && !nowCalculating.get() && currentQuery.length() > 0) {
+            calcutatedQuery = new StringCalculator.Query(currentQuery, 0, StringCalculator.QueryType.WHOLE_QUERY, 0);
+            // Send an event with this query.
+            dispatchEventToAttachedListeners(new ActionEvent(calcutatedQuery, ActionEvent.ACTION_PERFORMED, Commands.CALC_QUERY_ENTERED));
+
+            // Reset the current query, and set that we're now expecting a result.
+            nowCalculating.set(true);
+            currentQuery = "";
+            // Clear the input field
+            CalcInput.setText(currentQuery);
+        }
+    }
+
+    /**
+     * = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = =
+     * Public methods
+     */
+    public JGUI_SimpleCalculator() {
+    }
+
+    public JGUI_SimpleCalculator(AsyncCalcWorker cState) {
+        create(cState);
+    }
 
     /**
      * Method receives the calculation result (intermediate or end), and updates GUI accordingly.
@@ -256,8 +316,17 @@ public class JGUI_SimpleCalculator extends GUICalculatorLayout {
      */
     @Override
     public synchronized void sendCalculationResult(CalculatorPlugin.Result res1) {
-        if (!StringCalculator.class.isAssignableFrom(res1.getClass()))
-            throw new RuntimeException("Wrong result class! Must be that of StringCalculator!");
+        System.out.println("\n-------------------------\n[JGUI_SimpleCalculator.sendCalculationResult()]");
+        if (!nowCalculating.get()) {
+            System.out.print("Result is not expected at this moment.\n");
+            return;
+        }
+        if (!StringCalculator.Result.class.isAssignableFrom(res1.getClass())) {
+            System.out.print("Wrong result class! Must be that of StringCalculator!\nContents:" + res1);
+            return;
+        }
+        System.out.println("\n[JGUI_SimpleCalculator.sendCalculationResult()]: Got Result! Contents:" + res1 + "\n");
+
         final StringCalculator.Result res = (StringCalculator.Result) res1;
 
         SwingUtilities.invokeLater(() -> {
@@ -268,7 +337,12 @@ public class JGUI_SimpleCalculator extends GUICalculatorLayout {
                     break;
                 case StringCalculator.ResultType.END:
                     // Update the result field!
-                    CalcOutput.setText(res.strResult); // Use the in-built function to get simple form of Result.
+                    if (res.strResult != null)
+                        CalcOutput.setText(res.strResult);
+                    else
+                        CalcOutput.setText("Invalid result.");
+                    // Mark the end of calculation
+                    nowCalculating.set(false);
                     break;
                 //...
             }
@@ -283,9 +357,6 @@ public class JGUI_SimpleCalculator extends GUICalculatorLayout {
     public List<Class> getSupportedCalculatorPlugins() {
         return supportedPlugins;
     }
-
-    //Call when end result is ready. It's just a wrapper over sendCalculationResult
-    //public void setEndCalculationResult(StringCalculator.Result res){ sendCalculationResult(res); }
 
     /**
      * Add the listener which will be called when specific events happen on this object.
@@ -317,26 +388,45 @@ public class JGUI_SimpleCalculator extends GUICalculatorLayout {
      * @param cState - calculator State, which will signal events.
      */
     @Override
-    public synchronized void create(GuiCalcState cState) {
+    public synchronized void create(AsyncCalcWorker cState) {
         // The static initializer is called before the constructor, so currently all JFields are already init'd.
         if (guiCreated)
             throw new RuntimeException("GUI can only be create()'d once!");
         guiCreated = true;
 
-        // Set the State pointer. We will use this to signal Main about events.
-        state = cState;
-
         //-- Swing Component (Output to Main Thread) listeners
         //===============    Keys    ================//
 
         // The Key Listener for checking if user inputted numbers on keyboard.
-        RootPanel.addKeyListener(new KeyAdapter() {
+        KeyAdapter keyQueryListener = new KeyAdapter() {
             @Override
             public void keyTyped(KeyEvent keyEvent) {
-                super.keyTyped(keyEvent);
-                // Check for 1,2..9
+                // If input field is EDITABLE, then accept no key events - the input is written directly into the field
+                if (CalcInput.isEditable()) return;
+
+                System.out.format("Key %d (%c) typed.\n", keyEvent.getKeyCode(), keyEvent.getKeyChar());
+
+                if (!keyEvent.isActionKey()) {
+                    updateInputWithCharIfValid(keyEvent.getKeyChar(), true);
+                }
             }
-        });
+
+            @Override
+            public void keyReleased(KeyEvent keyEvent) {
+                // If input field is EDITABLE, then accept no key events - the input is written directly into the field
+                if (CalcInput.isEditable()) return;
+
+                // Check for the control keys like Enter, Shift, etc.
+                switch (keyEvent.getKeyCode()) {
+                    case KeyEvent.VK_EQUALS:
+                    case KeyEvent.VK_ENTER:
+                        // Query end signaled. Submit query.
+                        submitCurrentQuery(true);
+                        break;
+                    //...
+                }
+            }
+        };
 
         //================ Text Areas ================//
 
@@ -344,17 +434,20 @@ public class JGUI_SimpleCalculator extends GUICalculatorLayout {
         CalcInput.getDocument().addDocumentListener(new DocumentListener() {
             @Override
             public void insertUpdate(DocumentEvent documentEvent) {
+                if (!CalcInput.isEditable()) return;
                 System.out.println("insertUpdate");
 
             }
 
             @Override
             public void removeUpdate(DocumentEvent documentEvent) {
+                //if (!CalcInput.isEditable()) return;
 
             }
 
             @Override
             public void changedUpdate(DocumentEvent documentEvent) {
+                //if (!CalcInput.isEditable()) return;
 
             }
         });
@@ -364,10 +457,16 @@ public class JGUI_SimpleCalculator extends GUICalculatorLayout {
         // ActionListener for all buttons. They all fire ActionCommands.
         // We define this AnonClass, and then we'll add it to every button.
         ActionListener buttList = (ActionEvent actionEvent) -> {
+            char[] car = actionEvent.getActionCommand().toCharArray();
+            if (car.length == 1) {
+                updateInputWithCharIfValid(car[0], true);
+            }
+            // Now check for complex buttons.
             switch (actionEvent.getActionCommand()) {
-                case "MC":
+                case "equals": // Submit
+                    submitCurrentQuery(true);
                     break;
-                // And all others.
+                //...
             }
         };
 
@@ -404,10 +503,17 @@ public class JGUI_SimpleCalculator extends GUICalculatorLayout {
         // Change font size of Output TextField.
         Font outputFont = new JTextField().getFont().deriveFont(24f);
         CalcOutput.setFont(outputFont);
-        CalcOutput.setText("Baba");
+        //CalcOutput.setText("Baba");
 
-        // Set the InputBox editable by default.
+        // Set the InputBox editable by default, and set initial text.
         CalcInput.setEditable(Defaults.TypedInput);
+        CalcInput.setText(currentQuery);
+
+        // Add KeyListener to all RootPanel's childs recursively, so the KeyPressEvents
+        // would be catchable on whole layout area.
+        // - We exclude the Input Component, because it is typeable.
+        callForAllComponents(RootPanel, (Component c) -> c.addKeyListener(keyQueryListener), null);
+        //Arrays.asList(CalcInput));
 
         //================  Add related menu items  ================//
         // Add menu items and listeners for this Layout.
@@ -485,6 +591,5 @@ public class JGUI_SimpleCalculator extends GUICalculatorLayout {
     private JPanel RootPanel;
     private JPanel Others;
     private JScrollPane InputScrollPane;
-
 
 }
