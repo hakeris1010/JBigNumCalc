@@ -1,2 +1,0 @@
-jbignums.testolator.CalculationErrorCalcException
-jbignums.testolator.CalcException
