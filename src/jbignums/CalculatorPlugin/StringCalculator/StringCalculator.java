@@ -1,16 +1,12 @@
 package jbignums.CalculatorPlugin.StringCalculator;
 
-import com.sun.org.apache.regexp.internal.RE;
 import jbignums.CalculatorPlugin.AsyncQueueCalculatorPlugin;
 import jbignums.CalculatorPlugin.CalculatorPlugin;
 
 import java.math.BigDecimal;
-import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicLong;
 
 /**
  *  A Calculator designed to work concurrently.
@@ -74,6 +70,9 @@ public class StringCalculator extends AsyncQueueCalculatorPlugin{
     protected volatile int calcMode = 0;
 
     protected Result lastResult;
+
+    // The Parser
+    StringExpressionParserXML currentParser;
 
     /** = = = = = == = = = = == = = = = == = = = = == = = = = = //
      * Constructors

@@ -337,6 +337,11 @@ public class JGUI_SimpleCalculator extends GUICalculatorLayout {
                     break;
                 case StringCalculator.ResultType.END:
                     // Update the result field!
+                    if (currentQuery.length() > 0) { // Already started typing a new query.
+                        JOptionPane.showMessageDialog(null, "Previous query result complete!",
+                                "Info", JOptionPane.INFORMATION_MESSAGE);
+                    }
+
                     if (res.strResult != null)
                         CalcOutput.setText(res.strResult);
                     else
