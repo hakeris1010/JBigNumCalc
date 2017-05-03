@@ -72,7 +72,7 @@ public class StringCalculator extends AsyncQueueCalculatorPlugin{
     protected Result lastResult;
 
     // The Parser
-    StringExpressionParserXML currentParser;
+    StringExpressionParser currentParser;
 
     /** = = = = = == = = = = == = = = = == = = = = == = = = = = //
      * Constructors
