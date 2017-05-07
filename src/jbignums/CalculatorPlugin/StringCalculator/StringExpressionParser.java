@@ -1,13 +1,13 @@
 package jbignums.CalculatorPlugin.StringCalculator;
 
-import java.io.ByteArrayInputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.StringReader;
+import com.sun.deploy.util.ArrayUtil;
+
 import java.math.BigDecimal;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Scanner;
+import java.util.regex.Pattern;
 
 /**
  * Basic String expression Parser class.
@@ -36,13 +36,11 @@ public class StringExpressionParser {
      * Node type class for representing a calculation object, designed to be easily convertable to XML.
      */
     public static class CalcNode{
-        public static final class Types{
-            int DEFAULT = 0;
-            int NUMBER = 1;
-            int BASIC_OP = 2;
-            int FUNCTION = 3;
-            int BLOCK = 4;
-        }
+        public static final int DEFAULT = 0;
+        public static final int NUMBER = 1;
+        public static final int BASIC_OP = 2;
+        public static final int FUNCTION = 3;
+        public static final int BLOCK = 4;
 
         public int type;
         public String data;
@@ -91,27 +89,170 @@ public class StringExpressionParser {
     }
 
     /**
+     * Calculation expression patterns.
+     */
+    public static final class Patterns {
+        public static final Pattern NUMBER = Pattern.compile("^[+-]?(?:\\d*\\.)?\\d+$");
+        public static final Pattern BASIC_OPERATOR = Pattern.compile("[+*/&\\-^]");
+        public static final Pattern BLOCK_STARTER = Pattern.compile("[(]");
+        public static final Pattern BLOCK_ENDER = Pattern.compile("[)]");
+        public static final Pattern ARG_SEPARATOR = Pattern.compile("[,]");
+        public static final Pattern FUNCTION_NAME = Pattern.compile("^[a-zA-Z_][\\w]+$");
+
+        public static final Pattern CONSTANT = Pattern.compile("[e|pi]");
+        public static final Pattern VARIABLE = Pattern.compile("^[xXyYzZ](\\d*)?$");
+
+        //========================================================//
+    }
+
+    private static final class RecursiveFlags{
+        public static final int FUNCTION = 1 << 1;
+    }
+
+    /**
      * Root CalcNode. This node contains all the child nodes of the expression.
      */
     private CalcNode rootNode;
-    private Scanner reader;
 
     private boolean isWorking = false;
 
     /**
+     * Preprocess the string:
+     * - Add Whitespaces between operators and names.
+     */
+    private static int needsWhitespaceBetween(char c1, char c2){
+        // Number (1.0)
+        if( (Character.isDigit(c1) && Character.isDigit(c2)) ||
+            (Character.isDigit(c1) && c2=='.') ||
+            (c1=='.' && Character.isDigit(c2)) )
+            return -1;
+
+        // Function name or constant (log2)
+        if( (Character.isAlphabetic(c1) && Character.isDigit(c2)) ||
+            (Character.isAlphabetic(c2) && Character.isDigit(c1)) ||
+            (Character.isAlphabetic(c1) && Character.isAlphabetic(c2)) )
+            return -1;
+
+        // Parenthesis after function name ( log2( ) - NOT NEEDED ANYMORE.
+        //if( (Character.isAlphabetic(c1) || Character.isDigit(c1)) && c2=='(' )
+
+        // Whitespace and other character together
+        if( Character.isWhitespace(c1) && !Character.isWhitespace(c2) ||
+            Character.isWhitespace(c2) && !Character.isWhitespace(c1) )
+            return -1;
+
+        // All other cases (2+,+2,etc) - space between.
+        return 1;
+    }
+
+    private static int needsDeletion(char c1, char c2){
+        if(Character.isWhitespace(c1) && Character.isWhitespace(c2))
+            return 0;
+        return -1;
+    }
+
+    private static String preprocessExpression(String expr){
+        /*ArrayList<Character> cl = new ArrayList<>();
+        for(char i : expr.toCharArray()){
+            cl.add( i );
+        }
+        int tmp;*/
+
+        expr = expr + " ";
+
+        StringBuilder ret = new StringBuilder();
+        char[] cl = expr.toCharArray();
+        int tmp;
+        for(int i = 0; i < cl.length - 1; i++){
+            if(needsDeletion(cl[i], cl[i+1]) >= 0){
+                // delete cl[i]
+            }
+            else if(needsWhitespaceBetween( cl[i], cl[i+1] ) >= 0){
+                ret.append(cl[i]);
+                ret.append(' ');
+            }
+            else // No operation required - just add current char.
+                ret.append(cl[i]);
+        }
+
+        return ret.toString();
+    }
+
+    /**
      * Private methods. This is the place where all the heavy lifting and magic is done.
      * The StringReader "reader" must be assigned to call this function.
+     * @param reader - the Scanner object by which we iterate the expression
+     * @param flags - flags specifying specific things:
+     *        - FUNCTION - treat the block as a function parameter list, and return the node as a function.
+     *
      */
-    private CalcNode getNextNode() throws CalcNodeParseException {
-        /*if(reader.hasNext("[\\(]")){
-            reader.nextByte();
-            try{
-                getNextNode();
-            } catch (CalcNodeParseException e){
+    private CalcNode getNodeBlock(Scanner reader, int flags) throws CalcNodeParseException {
+        /* Several possibilities here - current symbol is:
+         * Valid ones:
+         * 1. Digit - indicates number operand.
+         * 2. Bracket (, )
+         * 4. Standard operand:
+         *    - Arithmetic: +,-,*,/,^,%
+         * ---- The following are not implemented ----
+         * 5. Extended operand:
+         *    - Equational: >, <, >=, <=, =
+         *    - Bitwise: &,|,~
+         *    - Logical implication: -->, <-->
+         * 6. Letter:
+         *    - Function name start (log, sin)
+         *    - Constant (pi, e)
+         *    - Variable (x1, x2, y1, y2)
+         * 7. Array bracket: {, [, ], }
+         */
+        boolean onFunctionBlock = false;
+        CalcNode mainNode = null, newNode = null;
+
+        // Run loop until condition met.
+        while(reader.hasNext()) {
+            newNode = null;
+
+            //========== Check all the variants ==========//
+            /* Block start parenthesis: 2 options:
+             * 1. New block start --> call recursion.
+             * 2. Function ArgList start --> turn to arg mode.
+             */
+            if (reader.hasNext(Patterns.BLOCK_STARTER)) {
+                reader.next(Patterns.BLOCK_STARTER);
+                //enterParentCount++;
+
+                // Call the recursive method up, to get the block.
+                newNode = getNodeBlock(reader, (onFunctionBlock ? RecursiveFlags.FUNCTION : 0));
+
+                // If we were on function, block ended, so set to false.
+                onFunctionBlock = false;
+            }
+
+            /* End block parent:
+             * 1. This function was called recursively, and the end of block is found --> return.
+             * 2. Function ArgList end --> turn to main mode.
+             */
+            else if (reader.hasNext(Patterns.BLOCK_ENDER)){
+                //if(mainNode && mai)
 
             }
-        }*/
-        return null;
+
+            // Check if next characters can be interpreted as a BigDecimal number.
+            else if (reader.hasNextBigDecimal()) {
+                newNode = new CalcNode(CalcNode.NUMBER, null, reader.nextBigDecimal());
+            }
+
+            //========== . ==========//
+            // After checking all variants, if newNode exists, add it.
+            // If node is NULL, it means no node was recognized --> ERROR ON EXPRESSION!!!!
+            if(newNode != null){
+                mainNode.addChild(newNode);
+            }
+            else{
+                // Throw da excepshon.
+                throw new CalcNodeParseException(0, CalcNodeParseException.ERR_INVALID_CHARS);
+            }
+        }
+        return mainNode;
     }
 
     /**
@@ -129,15 +270,21 @@ public class StringExpressionParser {
             }
             isWorking = true;
         }
+        expression = preprocessExpression(expression);
+
         // Assign a new reader. We will use it to safely traverse a String.
-        reader = new Scanner(expression);
+        Scanner reader = new Scanner(expression);
 
-        // All work is done here.
-        /*while(reader.hasNext()){
-            //if(reader.available() == 0) break;
-            CalcNode nuNode = getNextNode();
 
-        }*/
+        // Get all nodes recursively.
+        try {
+            rootNode = getNodeBlock(reader);
+
+        } catch (CalcNodeParseException e){
+            System.out.print("Exception while parsing: "+e);
+            e.printStackTrace();
+            rootNode = null;
+        }
 
         // Close the scanner in the end.
         reader.close();
@@ -156,4 +303,18 @@ public class StringExpressionParser {
         return rootNode;
     }
 
+    /**
+     * Test method to be called from Main while DEBUGGING.
+     */
+
+    public static void Test_DEBUG(){
+        System.out.print("TESTBugging the StrCalParser!\n\n");
+
+        long start = System.nanoTime();
+        String nuExpr = "2*+892 +    333.5+5^8 +log258(nyaa)+(875+4-sin(pi)*2(opa()))";
+
+        // Testing Preprocessor
+        System.out.println( "Test preprocessor:\n" + preprocessExpression( nuExpr ) );
+        System.out.println("Time: "+(double)(System.nanoTime()-start)/1000.0 + " us" );
+    }
 }

@@ -7,9 +7,12 @@ package jbignums.GuiCalc.Swing;
 
 import jbignums.CalcProperties.AsyncCalcWorker;
 import jbignums.CalculatorPlugin.AsyncQueueCalculatorPlugin;
+import jbignums.CalculatorPlugin.StringCalculator.StringExpressionParser;
 import jbignums.GuiCalc.GUICalculator;
 
 import java.awt.event.*;
+import java.util.NoSuchElementException;
+import java.util.Scanner;
 import javax.swing.*;
 
 /**
@@ -247,13 +250,25 @@ public class SwingGuiStarter {
 
     /** ===========================================================
      * Main function.
-     * @param args
+     * //@param args
      */
+
+    public static void TestStuff(){
+        Scanner scan = new Scanner("8 + 556.5 + 133.7 +  7.464e+80 :3");
+        while(scan.hasNext()){
+            if(scan.hasNextBigDecimal()){
+                System.out.println("<Found a BigDecimal!> : "+scan.nextBigDecimal());
+            }
+            System.out.println( scan.next() );
+        }
+    }
 
     public static void main(String[] args)
     {
         System.out.println("STARTING GUICALC!!!");
-        new SwingGuiStarter(true);
+        //new SwingGuiStarter(true);
+        //TestStuff();
+        StringExpressionParser.Test_DEBUG();
     }
 }
 
