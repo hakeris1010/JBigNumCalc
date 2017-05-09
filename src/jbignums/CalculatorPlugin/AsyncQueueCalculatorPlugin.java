@@ -1,8 +1,5 @@
 package jbignums.CalculatorPlugin;
 
-import com.sun.org.apache.regexp.internal.RE;
-import jbignums.testolator.Calculator;
-
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;

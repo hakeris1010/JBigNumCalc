@@ -63,6 +63,11 @@ public class StringCalculator extends AsyncQueueCalculatorPlugin{
         }
     }
 
+    private static class Defaults{
+        public static boolean useSimulataneousCalcParse = true;
+
+    }
+
     /** = = = = = == = = = = == = = = = == = = = = == = = = = = //
      * Private fields
      */
