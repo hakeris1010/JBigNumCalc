@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicReference;
 
 public abstract class AsyncQueueCalculatorPlugin implements CalculatorPlugin {
     /**
@@ -75,9 +76,6 @@ public abstract class AsyncQueueCalculatorPlugin implements CalculatorPlugin {
     // at the end of calculation the object must be notified to wake up waiters for final result.
     private AtomicBoolean stillCalculating = new AtomicBoolean( false );
 
-    // Lists of Variables for communicating and notifying other threads
-    private final List<AtomicBoolean> terminators = Collections.synchronizedList( new ArrayList<>() );
-
     /* TODO: The New model: "One Queue, Many Workers (0-Many Handlers)".
              This model will use One shared queue for all calculator tasks to push their results. For task
              identification, we'll use initially assigned available unique ID number, which will be added to
@@ -87,32 +85,32 @@ public abstract class AsyncQueueCalculatorPlugin implements CalculatorPlugin {
     /**
      * The fields to be accessed from the implementing classes.
      */
-    protected BlockingQueue<Result> resultQueue;
+    // Lists of Variables for detecting and notifying other threads to terminating.
+    protected final List<AtomicBoolean> terminators = Collections.synchronizedList( new ArrayList<>() );
+
+    // Queues - we add results to ResultQueue.
+    protected AtomicReference< BlockingQueue<Result> > resultQueue = new AtomicReference<>();
 
     // The ID of this task. Assigned with the INIT query, at the start of the job.
-    protected AtomicLong currentID = new AtomicLong(0);
+    protected final AtomicLong currentID = new AtomicLong(0);
 
     /** ===========================================================================
      * Protected methods
-     */
-    protected boolean isTerminatorSet(){
-        for(int i = 0; i<terminators.size(); i++){
-            // If at least one terminating variable is set, we must quit a job.
-            if(terminators.get(i).get())
-                return true;
-        }
-        return false;
-    }
-
-    /**
      * Can be used from the implementing classes to signal the end of calculation by notifying this object.
      */
     protected synchronized void setCalculationEnd(){
         stillCalculating.set(false);
         this.notify();
     }
+
     protected void setCalculationStart(){
         stillCalculating.set(true);
+    }
+
+    protected void pushResultToQueue(Result res){
+        if(resultQueue.get() != null){
+            resultQueue.get().add(res);
+        }
     }
 
     /** ===========================================================================
@@ -120,10 +118,9 @@ public abstract class AsyncQueueCalculatorPlugin implements CalculatorPlugin {
      */
     public AsyncQueueCalculatorPlugin(){ }
     public AsyncQueueCalculatorPlugin(BlockingQueue<Result> resultQue, List<AtomicBoolean> terminatingVars){
-        resultQueue = resultQue;
-        for(int i=0; i<terminatingVars.size(); i++){
-            terminators.add( terminatingVars.get(i) );
-        }
+        resultQueue.set( resultQue );
+        if(terminatingVars != null)
+            terminators.addAll(terminatingVars);
     }
 
     /**
@@ -164,8 +161,8 @@ public abstract class AsyncQueueCalculatorPlugin implements CalculatorPlugin {
      * Set the new Result Queue reference.
      * @param queue - the Blocking Queue object.
      */
-    public synchronized void setResultQueue(BlockingQueue<Result> queue){
-        this.resultQueue = queue;
+    public void setResultQueue(BlockingQueue<Result> queue){
+        this.resultQueue.set( queue );
     }
 
     /**
@@ -173,9 +170,9 @@ public abstract class AsyncQueueCalculatorPlugin implements CalculatorPlugin {
      * Block the thread until new value is present on Queue.
      */
     public static Result getWaitResultFromQueue(AsyncQueueCalculatorPlugin calc){
-        if(calc.isCalculating() || !calc.resultQueue.isEmpty()) {
+        if(calc.isCalculating() || !calc.resultQueue.get().isEmpty()) {
             try {
-                return calc.resultQueue.take();
+                return calc.resultQueue.get().take();
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }
@@ -184,9 +181,9 @@ public abstract class AsyncQueueCalculatorPlugin implements CalculatorPlugin {
     }
 
     public static Result getIntermediateResultIfPending(AsyncQueueCalculatorPlugin calc){
-        if( !calc.resultQueue.isEmpty() ) {
+        if( !calc.resultQueue.get().isEmpty() ) {
             try {
-                return calc.resultQueue.take();
+                return calc.resultQueue.get().take();
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }
@@ -195,7 +192,7 @@ public abstract class AsyncQueueCalculatorPlugin implements CalculatorPlugin {
     }
 
     public synchronized boolean isResultPending(){
-        return !(resultQueue.isEmpty());
+        return !(resultQueue.get().isEmpty());
     }
 
     /**
@@ -217,7 +214,7 @@ public abstract class AsyncQueueCalculatorPlugin implements CalculatorPlugin {
      */
     @Override
     public final Result startCalculation(CalculatorPlugin.Query q){
-        assignQuery((Query)q);
+        assignQuery(q);
         return startCalculation();
     }
 

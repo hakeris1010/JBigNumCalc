@@ -1,6 +1,7 @@
 package jbignums.CalculatorPlugin.StringCalculator;
 
 import com.sun.istack.internal.NotNull;
+import jbignums.Helpers.Checkers;
 import jbignums.Helpers.OutF;
 import jbignums.Helpers.StrF;
 
@@ -10,7 +11,6 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.function.Consumer;
 import java.util.regex.Pattern;
 
 /**
@@ -61,7 +61,8 @@ public class StringExpressionParser {
             BLOCK_START,
             BLOCK_END,
             PARSE_START,
-            PARSE_END
+            PARSE_END,
+            PARSE_INTERRUPTED
         }
 
         public Types type;
@@ -96,23 +97,32 @@ public class StringExpressionParser {
     /**
      * Base class for exceptions to appear during parsing.
      */
-    public class CalcNodeParseException extends RuntimeException{
-        public static final int ERR_INVALID_CHARS   = 1;
-        public static final int ERR_BAD_PARENTHESES = 2;
+    public static class CalcNodeParseException extends RuntimeException{
+        public enum Code {
+             ERR_INVALID_CHARS,
+             ERR_BAD_PARENTHESES,
+             TERMINATE_REQUESTED
+        }
 
         private int where;
-        private int errType;
+        private String token;
+        private Code errType;
 
         public CalcNodeParseException(String what){
             super(what);
         }
-        public CalcNodeParseException(int where1, int errType1){
-            super("Error when parsing a GrylloCalc String to a CalcNode: where:"+where1+", errType:"+errType1);
-            where = where1;
+        public CalcNodeParseException(Code errType1){
+            super("Error when parsing a GrylloCalc String to a CalcNode: errType:"+errType1);
             errType = errType1;
         }
+        public CalcNodeParseException(Code errType1, String tok, int where1){
+            this(errType1);
+            token = tok;
+            where = where1;
+        }
         public int getWhere(){return where;}
-        public int getErrType(){return errType;}
+        public Code getErrType(){return errType;}
+        public String getToken(){ return token;}
     }
 
     /**
@@ -132,9 +142,9 @@ public class StringExpressionParser {
         //========================================================//
     }
 
-    private static final class RecursiveFlags{
+    private static final class RecursiveFlags {
         public static final int ARITHMETIC_ERRCHECK = 1 << 0;
-        public static final int FUNCTION = 1 << 1;
+        public static final int FUNCTION            = 1 << 1;
     }
 
     // Root CalcNode. This node contains all the child nodes of the expression
@@ -142,7 +152,7 @@ public class StringExpressionParser {
     private CalcNodeParseException lastParseError;
 
     // SYNCHRONIZED List of shutdown vars to bind to. We use them to check for quit condition.
-    private AtomicReference< List<AtomicBoolean> > terminators = new AtomicReference<>();
+    private final List<AtomicBoolean> terminators = Collections.synchronizedList( new ArrayList<>() );
 
     // A Reference to a Blocking Queue to which we pass newly parsed nodes if set.
     // Used by the multi-threaded simultaneous parsing and processing by the calculator.
@@ -157,14 +167,15 @@ public class StringExpressionParser {
     public StringExpressionParser(){ }
     public StringExpressionParser(List<AtomicBoolean> shutdownVars, BlockingQueue<CalcNode> bindQueue){
         nodeQueue.set( bindQueue );
-        terminators.set( shutdownVars );
+        if(shutdownVars != null)
+            terminators.addAll( shutdownVars );
     }
 
-    public void bindNodeQueue(BlockingQueue<CalcNode> bindQueue){
+    public void bindNodeQueue(@NotNull BlockingQueue<CalcNode> bindQueue){
         nodeQueue.set( bindQueue );
     }
-    public void bindTerminatorList(List<AtomicBoolean> lst){
-        terminators.set(lst);
+    public void bindTerminatorList(@NotNull List<AtomicBoolean> lst){
+        terminators.addAll( lst );
     }
 
     /**
@@ -183,9 +194,6 @@ public class StringExpressionParser {
             (Character.isAlphabetic(c2) && Character.isDigit(c1)) ||
             (Character.isAlphabetic(c1) && Character.isAlphabetic(c2)) )
             return -1;
-
-        // Parenthesis after function name ( log2( ) - NOT NEEDED ANYMORE.
-        //if( (Character.isAlphabetic(c1) || Character.isDigit(c1)) && c2=='(' )
 
         // Whitespace and other character together
         if( Character.isWhitespace(c1) && !Character.isWhitespace(c2) ||
@@ -208,13 +216,18 @@ public class StringExpressionParser {
      * @param expr - String-type expression.
      * @return - Preprocessed string expression.
      */
-    private static String preprocessExpression(String expr){
+    private String preprocessExpression(String expr) throws CalcNodeParseException{
         expr = expr + " ";
 
         StringBuilder ret = new StringBuilder();
         char[] cl = expr.toCharArray();
-        int tmp;
+
         for(int i = 0; i < cl.length - 1; i++){
+            if(i%50 == 0) { // Perform TerminatorCheck every 50 iterations
+                if(Checkers.isOneAtomicBooleanSet(terminators))
+                    throw new CalcNodeParseException(CalcNodeParseException.Code.TERMINATE_REQUESTED);
+            }
+
             if(needsDeletion(cl[i], cl[i+1]) >= 0){
                 // delete cl[i]
             }
@@ -262,7 +275,7 @@ public class StringExpressionParser {
          * 7. Array bracket: {, [, ], }
          */
         boolean timeToEnd = false;
-        int opCount = 0;
+        int iterations = 0;
         CalcNode newNode;
 
         OutF.logfn("\n"+StrF.rep(' ', level)+"----------------");
@@ -270,6 +283,12 @@ public class StringExpressionParser {
 
         // Run loop until condition met.
         while(reader.hasNext() && !timeToEnd) {
+            if(iterations%10 == 0) { // Check terminators every 10 iterations
+                if(Checkers.isOneAtomicBooleanSet(terminators))
+                    throw new CalcNodeParseException(CalcNodeParseException.Code.TERMINATE_REQUESTED);
+            }
+            iterations++;
+
             newNode = null;
             boolean noMatchFound = false;
 
@@ -332,7 +351,7 @@ public class StringExpressionParser {
             else if(reader.hasNext(Patterns.ARG_SEPARATOR)){
                 //Skip the separator, or fire an Exception if not on function
                 if((flags & RecursiveFlags.FUNCTION) != RecursiveFlags.FUNCTION)
-                    throw new CalcNodeParseException(0, CalcNodeParseException.ERR_INVALID_CHARS);
+                    throw new CalcNodeParseException(CalcNodeParseException.Code.ERR_INVALID_CHARS, reader.next(), 0);
                 OutF.logfn(level*2, "Found an Arg Separator: "+reader.next());
                 //reader.next();
             }
@@ -348,7 +367,7 @@ public class StringExpressionParser {
                 // If no such thing can be found next, SYNTAX ERROR!!!
                 if(!reader.hasNext(Patterns.BLOCK_STARTER)) {
                     OutF.logfn("No parenthesis after function. Next value: \""+reader.next()+"\"");
-                    throw new CalcNodeParseException(0, CalcNodeParseException.ERR_BAD_PARENTHESES);
+                    throw new CalcNodeParseException(CalcNodeParseException.Code.ERR_BAD_PARENTHESES, reader.next(), 0);
                 }
                 // Remove the block starter, and launch recursion on further nodes.
                 reader.next();
@@ -394,18 +413,17 @@ public class StringExpressionParser {
                 }
             }
             else if(noMatchFound){ // No match found --> syntax error!
-                throw new CalcNodeParseException(0, CalcNodeParseException.ERR_INVALID_CHARS);
+                throw new CalcNodeParseException(CalcNodeParseException.Code.ERR_INVALID_CHARS,
+                                                 reader.hasNext() ? reader.next() : "", 0);
             }
         }
-        // At the loop end, if timeToEnd is still false (no end-block marker reached),
-        // and this function was called recursively (block start has been spotted), but stream has
-        // no next token available, it means there were errors with parenthesis syntax. Fire an Exception!
-        if(!timeToEnd && level > 0){
-            throw new CalcNodeParseException(0, CalcNodeParseException.ERR_BAD_PARENTHESES);
-        }
-        // If on main block (level 0), and still some data is unread, it means closing bracket has been encountered.
-        if(level == 0 && reader.hasNext()){
-            throw new CalcNodeParseException(0, CalcNodeParseException.ERR_BAD_PARENTHESES);
+        // - At the loop end, if timeToEnd is still false (no end-block marker reached),
+        //   and this function was called recursively (block start has been spotted), but stream has
+        //   no next token available, it means there were errors with parenthesis syntax. Fire an Exception!
+        // - OR: If on main block (level 0), and still some data is unread, it means closing bracket has been encountered.
+        if((!timeToEnd && level > 0) || (level == 0 && reader.hasNext())){
+            throw new CalcNodeParseException(CalcNodeParseException.Code.ERR_BAD_PARENTHESES,
+                                             reader.hasNext() ? reader.next() : "", 0);
         }
 
         return mainNode;
@@ -418,6 +436,9 @@ public class StringExpressionParser {
      */
 
     public CalcNode parseString(String expression) {
+        // Set no logging
+        OutF.setOpened(false);
+
         synchronized (this){
             if(isWorking){
                 System.out.println("Work is already in progress!");
@@ -426,33 +447,47 @@ public class StringExpressionParser {
             isWorking = true;
             lastParseError = null; // Nullify the last error - make a fresh start.
         }
-        expression = preprocessExpression(expression);
 
-        // Assign a new reader. We will use it to safely traverse a String.
-        Scanner reader = new Scanner(expression);
-        CalcNode bamNode = new CalcNode(CalcNode.Types.BLOCK, null, null);
+        CalcNode bamNode;
         CalcNodeParseException lastError = null;
 
-        // Signal the parse start to the queue.
-        nodeQueue.get().add( new CalcNode(CalcNode.Types.PARSE_START, null, null) );
-
-        // Get all nodes recursively.
         try {
+            // Preprocess string: add spaces between operators and operands.
+            // Exceptions Can Be Thrown Here!
+            expression = preprocessExpression(expression);
+
+            // Assign a new reader. We will use it to safely traverse a String.
+            Scanner reader = new Scanner(expression);
+            bamNode = new CalcNode(CalcNode.Types.BLOCK, null, null);
+
+            // Signal the parse start to the queue.
+            nodeQueue.get().add(new CalcNode(CalcNode.Types.PARSE_START, null, null));
+
+            // Get all nodes recursively.
+            // Exceptions Can Be Thrown Here!
             bamNode = getNodeBlock(reader, bamNode, 0, 0);
 
-        } catch (CalcNodeParseException e){
-            System.out.print("Exception while parsing: "+e);
-            e.printStackTrace();
-            System.out.println("\nException occured on token: " + (reader.hasNext() ? reader.next() : "end of expr.") );
+            // After the parsing is complete, signal the end of parsing to the waiting queue.
+            nodeQueue.get().add(new CalcNode(CalcNode.Types.PARSE_END, null, null));
 
+            // Close the scanner in the end.
+            reader.close();
+        }
+        catch (CalcNodeParseException e){
+            if(e.getErrType() == CalcNodeParseException.Code.TERMINATE_REQUESTED){
+                System.out.println("Termination has been requested on TermVars! terminating.");
+            }
+            else {
+                System.out.print("Exception while parsing: " + e);
+                e.printStackTrace();
+            }
             lastError = e;
             bamNode = null;
-        }
-        // After the parsing is complete, signal the end of parsing to the waiting queue.
-        nodeQueue.get().add( new CalcNode(CalcNode.Types.PARSE_END, null, null) );
 
-        // Close the scanner in the end.
-        reader.close();
+            // Push the "Interrupted" node onto the queue, to wake up waiters and signal them
+            // that exception occured here.
+            nodeQueue.get().add(new CalcNode(CalcNode.Types.PARSE_INTERRUPTED, null, null));
+        }
 
         // Perform synced tasks of exitting.
         synchronized (this){
@@ -470,8 +505,12 @@ public class StringExpressionParser {
         return rootNode;
     }
 
-    public synchronized CalcNodeParseException getLastParseError(){
+    public synchronized CalcNodeParseException getLastParseError() {
         return lastParseError;
+    }
+
+    public void addTerminator(AtomicBoolean bol){
+        terminators.add(bol);
     }
 
     /**
@@ -493,7 +532,7 @@ public class StringExpressionParser {
      * Test method to be called from Main while DEBUGGING.
      */
 
-    public static void Test_DEBUG(){
+    public static void Test_DEBUG1(){
         System.out.print("TESTBugging the StrCalParser!\n\n");
 
         String nuExpr = "2*+892 +    333.5+5^8 +log258(x)+(875+4-sin(pi)*2(opa())) +" +
@@ -507,15 +546,36 @@ public class StringExpressionParser {
         OutF.setOpened(false);
 
         // Start the parser thread, and after that start the NodeGetter on current thread.
-        new Thread( () -> {
+        Runnable parseThread = () -> {
             long start1 = System.nanoTime();
-            System.out.println("\n[ParseThread]: Parsing the expression...\n");
+            System.out.println("[ParseThread]: Parsing the expression...");
             CalcNode cnod = parser.parseString(nuExpr);
-            System.out.println("\n[ParseThread]: Parsing complete! Time: " + (double) (System.nanoTime() - start1) / 1000.0 + " us\n");
-        }).start();
+            System.out.println("[ParseThread]: Parsing complete! Time: " + (double) (System.nanoTime() - start1) / 1000.0 + " us\n");
+        };
 
-        // Start taking values from Queue and inspect them in this loop.
-        nodeQueueRecursiveInspector(BoomQueue, 0);
+        // Start Node Processing Thread
+        Runnable nodeProcessThread = () -> {
+            long start2 = System.nanoTime();
+            TestNodeData nd = new TestNodeData();
+            nd.parser = parser;
+
+            nodeQueueRecursiveInspector(BoomQueue, nd, 0);
+
+            System.out.println("[NodeProcessThread]: Processing complete! Nodes parsed: " + nd.nodesPassed +
+                               ", Time: " + (double) (System.nanoTime() - start2) / 1000.0 + " us\n");
+        };
+
+        //Start'em up!
+        new Thread(parseThread).start();
+        nodeProcessThread.run();
+
+        /*try {
+            Thread.sleep(1);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+        parser.addTerminator(new AtomicBoolean(true));
+        */
 
         /*long start2 = System.nanoTime();
         System.out.println("\n--------------------\nNode.toString():");
@@ -525,7 +585,12 @@ public class StringExpressionParser {
         */
     }
 
-    private static int nodeQueueRecursiveInspector(BlockingQueue<CalcNode> BoomQueue, int level){
+    static private class TestNodeData{
+        public int nodesPassed = 0;
+        public StringExpressionParser parser;
+    }
+
+    private static int nodeQueueRecursiveInspector(BlockingQueue<CalcNode> BoomQueue, TestNodeData nd, int level){
         CalcNode nextNode = null;
         while (true) {
             // Take a node when available.
@@ -534,15 +599,16 @@ public class StringExpressionParser {
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }
-            System.out.println(StrF.rep(' ',level*2) + "[NodeProcessThread]: Got node: " +
+            OutF.logfn(level*2, "[NodeProcessThread]: Got node: " +
                     (nextNode == null ? "(null)" : "Type: \"" + nextNode.type.name() + "\"" +
                             (nextNode.data != null ? ", Data: " + nextNode.data : "") +
                             (nextNode.number != null ? ", Number: " + nextNode.number : "")
                     )
             );
+            nd.nodesPassed++;
 
             // Check if end node, if yes, parsing has ended, return -1 - end recursion.
-            if (nextNode == null || nextNode.type == CalcNode.Types.PARSE_END){
+            if (nextNode == null || nextNode.type == CalcNode.Types.PARSE_END || nextNode.type==CalcNode.Types.PARSE_INTERRUPTED){
                 return -1;
             }
             // Block ended - just quit loop.
@@ -551,7 +617,7 @@ public class StringExpressionParser {
 
             // Check other possibilities.
             if(nextNode.type == CalcNode.Types.BLOCK_START){
-                if(nodeQueueRecursiveInspector(BoomQueue, level+1) == -1)
+                if(nodeQueueRecursiveInspector(BoomQueue, nd, level+1) == -1)
                     return -1;
             }
         }

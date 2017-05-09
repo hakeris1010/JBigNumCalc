@@ -7,6 +7,7 @@ package jbignums.GuiCalc.Swing;
 
 import jbignums.CalcProperties.AsyncCalcWorker;
 import jbignums.CalculatorPlugin.AsyncQueueCalculatorPlugin;
+import jbignums.CalculatorPlugin.StringCalculator.StringCalculator;
 import jbignums.CalculatorPlugin.StringCalculator.StringExpressionParser;
 import jbignums.GuiCalc.GUICalculator;
 
@@ -268,7 +269,8 @@ public class SwingGuiStarter {
         System.out.println("STARTING GUICALC!!!");
         //new SwingGuiStarter(true);
         //TestStuff();
-        StringExpressionParser.Test_DEBUG();
+        //StringExpressionParser.Test_DEBUG1();
+        StringCalculator.TestDEBUG1();
     }
 }
 
