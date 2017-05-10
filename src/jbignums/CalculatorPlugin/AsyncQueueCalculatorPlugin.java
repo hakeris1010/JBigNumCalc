@@ -15,29 +15,29 @@ public abstract class AsyncQueueCalculatorPlugin implements CalculatorPlugin {
      * - The ResultType provides basic types which may be needed.
      * - If more functionality is needed, it can be extended.
      */
-    public static class ResultType {
-        public static final int START             = 1;
-        public static final int INTERMEDIATE_DATA = 2;
-        public static final int END               = 4;
+    public enum ResultType {
+        START,
+        INTERMEDIATE_DATA,
+        END
     }
 
     public static class Result extends CalculatorPlugin.Result{
         // Header Fields
         protected long taskID;
-        protected int resultType;
+        protected ResultType resultType;
 
-        public int getResultType(){ return resultType; }
+        public ResultType getResultType(){ return resultType; }
         public long getTaskID(){ return taskID; }
 
         public Result(){ }
-        public Result(int resultType1, long taskID1){
+        public Result(ResultType resultType1, long taskID1){
             resultType = resultType1;
             taskID = taskID1;
         }
 
         @Override
         public String toString(){
-            return "\n"+this.getClass().getName()+":\n TaskID: "+taskID+"\n resultType:"+resultType;
+            return "\n"+this.getClass().getName()+":\n TaskID: "+taskID+"\n resultType:"+resultType.name();
         }
     }
 

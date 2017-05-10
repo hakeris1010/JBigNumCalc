@@ -1,7 +1,6 @@
 package jbignums.CalculatorPlugin.StringCalculator;
 
 import com.sun.istack.internal.NotNull;
-import com.sun.org.apache.regexp.internal.RE;
 import jbignums.CalculatorPlugin.AsyncQueueCalculatorPlugin;
 import jbignums.CalculatorPlugin.CalculatorPlugin;
 import jbignums.CalculatorPlugin.StringCalculator.StringExpressionParser.CalcNode;
@@ -10,7 +9,6 @@ import jbignums.Helpers.OutF;
 import jbignums.Helpers.StrF;
 
 import java.math.BigDecimal;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -49,6 +47,7 @@ public class StringCalculator extends AsyncQueueCalculatorPlugin{
 
     public enum DataType {
         DEFAULT,
+        ERROR,
         EQUATION;
     }
 
@@ -59,7 +58,7 @@ public class StringCalculator extends AsyncQueueCalculatorPlugin{
         public BigDecimal bigResult;
 
         public Result(){ super(); }
-        public Result(int resType, long taskID, DataType dType, double dRes, String sRes, BigDecimal bigRes){
+        public Result(ResultType resType, long taskID, DataType dType, double dRes, String sRes, BigDecimal bigRes){
             super(resType, taskID);
             dataType = dType;
             dblResult = dRes;
@@ -213,7 +212,7 @@ public class StringCalculator extends AsyncQueueCalculatorPlugin{
             // Exception occured - it means if parsing is still going, we must stop it.
             // Add a new teminating variable to signal quitting. The parser is bound, so it will affect.
             currentParser.addTerminator( new AtomicBoolean(true) );
-            procRes = new Result(ResultType.END, currentID.get(), DataType.DEFAULT,
+            procRes = new Result(ResultType.END, currentID.get(), DataType.ERROR,
                               0, "Error: " +e.getType().name()+ " ("+e.getErrCode()+")",  null );
         }
 
@@ -226,7 +225,7 @@ public class StringCalculator extends AsyncQueueCalculatorPlugin{
         }
         // Mark the end of calculation (Superclass-handled).
         // Notifies the waiters and sets isCalculating to false.
-        System.out.print("[StringCalculator.startCalculation()]: Ending Calculation...\n");
+        System.out.println("[StringCalculator.startCalculation()]: Ending Calculation...\n");
         setCalculationEnd();
 
         return lastResult;
@@ -248,9 +247,9 @@ public class StringCalculator extends AsyncQueueCalculatorPlugin{
     private @NotNull RecursiveResult startQueueProcessing(int level, int flags) throws CalculationNodeProcessException {
         StringExpressionParser.CalcNode nextNode = null;
         RecursiveResult thisBlockRes = new RecursiveResult(RecursiveResult.Code.NORMAL, null);
-        boolean afterOperator = false, afterNumber = false;
+        boolean afterOperator = false, afterNumber = false, timeToQuit = false;
 
-        while ( !Checkers.isOneAtomicBooleanSet(terminators) ) {
+        while ( !Checkers.isOneAtomicBooleanSet(terminators) && !timeToQuit ) {
             // Take a node when available.
             try {
                 nextNode = nodeQueue.take();
@@ -264,30 +263,37 @@ public class StringCalculator extends AsyncQueueCalculatorPlugin{
                             (nextNode.number != null ? ", Number: " + nextNode.number : "")
                     )
             );
+            thisBlockRes.iterations++;
 
             // Check if type is Interrupted or null - error occured while parsing expression.
-            if (nextNode.type==CalcNode.Types.PARSE_INTERRUPTED){
+            if (nextNode==null || nextNode.type==CalcNode.Types.PARSE_INTERRUPTED){
                 throw new CalculationNodeProcessException(CalculationNodeProcessException.Type.TERMINATION_REQUESTED, 0, null);
             }
 
-            // Check if end node, if yes, parsing has ended, return value signaling the end of recursion.
-            if (nextNode.type == CalcNode.Types.PARSE_END ){
-                thisBlockRes.code = RecursiveResult.Code.EXPR_END;
-                break;
-            }
-            // Block ended - just quit loop.
-            if (nextNode.type == CalcNode.Types.BLOCK_END)
-                break;
-
-            // Check other possibilities. Here starts the Calculation and Error Checking!!!
-            if(nextNode.type == CalcNode.Types.BLOCK_START){
-                RecursiveResult temp = startQueueProcessing(level+1, flags);
-                thisBlockRes.addStats(temp);
-                if(temp.code == RecursiveResult.Code.EXPR_END){ // End of expression node occured --> time to end.
+            switch (nextNode.type) {
+                case PARSE_END:
+                    // Check if end node, if yes, parsing has ended, return value signaling the end of recursion.
                     thisBlockRes.code = RecursiveResult.Code.EXPR_END;
+                    timeToQuit = true;
                     break;
-                }
+
+                // Block ended - just quit loop.
+                case BLOCK_END:
+                    timeToQuit = true;
+                    break;
+
+                // Check other possibilities. Here starts the Calculation and Error Checking!!!
+                case BLOCK_START:
+                    // Process new block recursively.
+                    RecursiveResult temp = startQueueProcessing(level + 1, flags);
+                    thisBlockRes.addStats(temp);
+                    if (temp.code == RecursiveResult.Code.EXPR_END) { // End of expression node occured --> time to end.
+                        thisBlockRes.code = RecursiveResult.Code.EXPR_END;
+                        timeToQuit = true;
+                    }
+                    break;
             }
+            //
         }
         return thisBlockRes;
     }
@@ -352,7 +358,8 @@ public class StringCalculator extends AsyncQueueCalculatorPlugin{
      * TESTING-DEBUGGING.
      */
     public static void TestDEBUG1(){
-        String calcExpr = "9+5+(4789.54+log2(pi)+++87)*2+x";
+        String calcExpr = "9+5;o+(4789.54+log2(pi)+++87)*2+x";
+        OutF.setOpened(true);
 
         System.out.println("[MainTester]: Starting StringCalculator Test. Expression:" +
                            (calcExpr.length() > 40 ? "(too long)": calcExpr));

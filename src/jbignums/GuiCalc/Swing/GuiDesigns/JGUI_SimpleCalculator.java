@@ -331,11 +331,11 @@ public class JGUI_SimpleCalculator extends GUICalculatorLayout {
 
         SwingUtilities.invokeLater(() -> {
             switch (res.getResultType()) {
-                case StringCalculator.ResultType.INTERMEDIATE_DATA:
+                case INTERMEDIATE_DATA:
                     // Process the progress - update progress bars and stuff, if needed.
                     System.out.println("Got intermediate results from the Calculation: " + res.getResultType());
                     break;
-                case StringCalculator.ResultType.END:
+                case END:
                     // Update the result field!
                     if (currentQuery.length() > 0) { // Already started typing a new query.
                         JOptionPane.showMessageDialog(null, "Previous query result complete!",

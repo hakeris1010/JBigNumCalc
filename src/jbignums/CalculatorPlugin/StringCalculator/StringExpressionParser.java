@@ -112,7 +112,7 @@ public class StringExpressionParser {
             super(what);
         }
         public CalcNodeParseException(Code errType1){
-            super("Error when parsing a GrylloCalc String to a CalcNode: errType:"+errType1);
+            super("CalcNodeParseExc. errType:"+errType1+"\n");
             errType = errType1;
         }
         public CalcNodeParseException(Code errType1, String tok, int where1){
@@ -436,9 +436,6 @@ public class StringExpressionParser {
      */
 
     public CalcNode parseString(String expression) {
-        // Set no logging
-        OutF.setOpened(false);
-
         synchronized (this){
             if(isWorking){
                 System.out.println("Work is already in progress!");
