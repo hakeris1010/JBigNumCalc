@@ -6,10 +6,12 @@ import jbignums.CalculatorPlugin.CalculatorPlugin;
 import jbignums.CalculatorPlugin.StringCalculator.StringExpressionParser.CalcNode;
 import jbignums.Helpers.Checkers;
 import jbignums.Helpers.OutF;
-import jbignums.Helpers.StrF;
 
 import java.math.BigDecimal;
+import java.util.Arrays;
+import java.util.Iterator;
 import java.util.List;
+import java.util.ListIterator;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -75,7 +77,8 @@ public class StringCalculator extends AsyncQueueCalculatorPlugin{
     /**
      * Exception class for Calculator Processor
      */
-    public static class CalculationNodeProcessException extends Exception{
+    public static class NodeProcessException extends Exception{
+        public static final int DEFAULT                  = 0;
         public static final int WRONG_OPERATOR_POSITIONS = 1 << 0;
         public static final int WRONG_FUNCTION_ARGUMENTS = 1 << 1;
         public static final int UNKNOWN_FUNCTION         = 1 << 2;
@@ -93,8 +96,14 @@ public class StringCalculator extends AsyncQueueCalculatorPlugin{
         private final int errCode;
         private final List<CalcNode> errNodes;
 
-        public CalculationNodeProcessException(Type tap, int errc, List<CalcNode> nodelist){
+        public NodeProcessException(int errc, Type tap, List<CalcNode> nodelist){
             type = tap; errCode = errc; errNodes = nodelist;
+        }
+        public NodeProcessException(Type tap){
+            this(tap, 0);
+        }
+        public NodeProcessException(Type tap, int errc, CalcNode... nodes){
+            this(errc, tap, Arrays.asList(nodes));
         }
 
         public int getErrCode() { return errCode; }
@@ -192,20 +201,19 @@ public class StringCalculator extends AsyncQueueCalculatorPlugin{
         Result procRes;
         try {
             // After the processing is complete, assign the result.
-            RecursiveResult ros = startQueueProcessing(0, calcMode);
+            RecursiveResult ros = startQueueProcessing(new CalcNode(CalcNode.Types.BLOCK, null, null), 0, calcMode);
             if(ros.blockRes==null) {
-                //  throw new CalculationNodeProcessException(CalculationNodeProcessException.Type.UNKNOWN_ERROR, 0, null);
-                ros.blockRes = new BigDecimal(0); //DEBUG
+                throw new NodeProcessException(NodeProcessException.Type.UNKNOWN_ERROR, 0, null);
             }
 
             System.out.println("Recursive result complete! Value:\n"+ros);
 
             // If everything is successful, the end result representation is set like this.
             procRes = new Result( ResultType.END, currentID.get(), DataType.DEFAULT,
-                     ros.blockRes.doubleValue(), ros.blockRes.toString(), ros.blockRes );
+                     ros.blockRes.number.doubleValue(), ros.blockRes.data, ros.blockRes.number );
 
         }
-        catch (CalculationNodeProcessException e) {
+        catch (NodeProcessException e) {
             System.out.println("Wow! Exception occured while processing input! ErrType:" +e.getType().name()+ " ("+e.getErrCode()+")");
             e.printStackTrace();
 
@@ -244,57 +252,127 @@ public class StringCalculator extends AsyncQueueCalculatorPlugin{
      * @param flags - specific flags.
      * @return - the StringCalculator.Result object representing a final calculation result.
      */
-    private @NotNull RecursiveResult startQueueProcessing(int level, int flags) throws CalculationNodeProcessException {
-        StringExpressionParser.CalcNode nextNode = null;
+    private @NotNull RecursiveResult startQueueProcessing(CalcNode rootNode, int level, int flags) throws NodeProcessException {
         RecursiveResult thisBlockRes = new RecursiveResult(RecursiveResult.Code.NORMAL, null);
+        // Bools used for checking the last node status in the basic operation chain.
         boolean afterOperator = false, afterNumber = false, timeToQuit = false;
 
+        CalcNode basicOperationChain = new CalcNode(CalcNode.Types.BLOCK, null, null);
+        CalcNode nextNode = null;
+
         while ( !Checkers.isOneAtomicBooleanSet(terminators) && !timeToQuit ) {
-            // Take a node when available.
-            try {
-                nextNode = nodeQueue.take();
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-                throw new CalculationNodeProcessException(CalculationNodeProcessException.Type.TERMINATION_REQUESTED, 0, null);
+            if(nextNode == null) {
+                try {
+                    nextNode = nodeQueue.take();
+                    OutF.logfn(level * 2, "[NodeProcessThread]: Taken node from QueUe: " + CalcNode.toBasicStaring(nextNode));
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                    throw new NodeProcessException(NodeProcessException.Type.TERMINATION_REQUESTED, 0);
+                }
             }
-            OutF.logfn(level * 2 ,"[NodeProcessThread]: Got node: " +
-                    (nextNode == null ? "(null)" : "Type: \"" + nextNode.type.name() + "\"" +
-                            (nextNode.data != null ? ", Data: " + nextNode.data : "") +
-                            (nextNode.number != null ? ", Number: " + nextNode.number : "")
-                    )
-            );
             thisBlockRes.iterations++;
 
             // Check if type is Interrupted or null - error occured while parsing expression.
             if (nextNode==null || nextNode.type==CalcNode.Types.PARSE_INTERRUPTED){
-                throw new CalculationNodeProcessException(CalculationNodeProcessException.Type.TERMINATION_REQUESTED, 0, null);
+                thisBlockRes.ctlNodeCount++;
+                throw new NodeProcessException(NodeProcessException.Type.TERMINATION_REQUESTED, 0);
             }
 
             switch (nextNode.type) {
-                case PARSE_END:
-                    // Check if end node, if yes, parsing has ended, return value signaling the end of recursion.
+            //=========================================//
+            // Check Control Command Nodes
+            case PARSE_START:
+                OutF.logfn("Parse has been started.");
+                thisBlockRes.ctlNodeCount++;
+                break;
+            // Check if end node, if yes, parsing has ended, return value signaling the end of recursion.
+            case PARSE_END:
+                thisBlockRes.ctlNodeCount++;
+                thisBlockRes.code = RecursiveResult.Code.EXPR_END;
+                timeToQuit = true;
+                break;
+
+            // Block ended - just quit loop.
+            case BLOCK_END:
+                thisBlockRes.ctlNodeCount++;
+                timeToQuit = true;
+                break;
+
+            // Block start control node - indicates that following nodes will be pushed recursively from the next block.
+            case BLOCK:
+                thisBlockRes.ctlNodeCount++;
+                thisBlockRes.blockCount++;
+
+                // The nextNode already contains all needed next block's information in it's attributes -
+                // the BlockType (simple, function, set), and the function name if it's a function.
+                // That information added on the parser. Now process new block recursively.
+                RecursiveResult temp = startQueueProcessing(nextNode, level + 1, flags);
+
+                thisBlockRes.addStats(temp);
+                // Check if End of Expression node occured. Set the exit variables if yes.
+                if (temp.code == RecursiveResult.Code.EXPR_END) {
                     thisBlockRes.code = RecursiveResult.Code.EXPR_END;
                     timeToQuit = true;
-                    break;
+                }
 
-                // Block ended - just quit loop.
-                case BLOCK_END:
-                    timeToQuit = true;
-                    break;
+                if(temp.blockRes != null){
+                    // Set the resulting node as a new NextNode, and process it in next iteration.
+                    nextNode = temp.blockRes;
+                    continue;
+                }
+                break;
 
-                // Check other possibilities. Here starts the Calculation and Error Checking!!!
-                case BLOCK_START:
-                    // Process new block recursively.
-                    RecursiveResult temp = startQueueProcessing(level + 1, flags);
-                    thisBlockRes.addStats(temp);
-                    if (temp.code == RecursiveResult.Code.EXPR_END) { // End of expression node occured --> time to end.
-                        thisBlockRes.code = RecursiveResult.Code.EXPR_END;
-                        timeToQuit = true;
-                    }
-                    break;
+            /* =========================================
+             * Check actual calculation nodes.
+             * There is where chain comes into play: the ultimate goal is just a chain of Basic Operators
+             * and Numbers, like 2+6*4/5.
+             * All blocks and functions must be converted into this type.
+             * Then ultimate calculation is done in the chain like this.
+             */
+            // Basic operator (+,-,*,/)
+            case BASIC_OP:
+                // Check for errors
+                // If situation like "*8..." or "...+*..."
+                if(basicOperationChain.getChilds().size()!=0 ? afterOperator : (!nextNode.data.equals("-") && !nextNode.data.equals("+"))) {
+                    throw new NodeProcessException(NodeProcessException.Type.SYNTAX_ERROR,
+                              NodeProcessException.WRONG_OPERATOR_POSITIONS, nextNode);
+                }
+                // If no error, add this operator to Basic Operation Chain
+                basicOperationChain.addChild( nextNode );
+
+                afterOperator = true;
+                afterNumber = false;
+                thisBlockRes.bopCount++;
+                break;
+            // Basic Number or Constant
+            case NUMBER:
+            case CONSTANT:
+                if(rootNode.data == CalcNode.BlockTypesData.CALC_BLOCK && afterNumber){
+                    throw new NodeProcessException(NodeProcessException.Type.SYNTAX_ERROR,
+                              NodeProcessException.WRONG_OPERATOR_POSITIONS, nextNode);
+                }
+
+                basicOperationChain.addChild( nextNode );
+
+                afterNumber = true;
+                afterOperator = false;
+                thisBlockRes.numCount++;
+                break;
+
+            // Check unimplemented features (variables, lists, and all other node types which are not supported).
+            default:
+                OutF.logfn(level*2, "[NodeProcessThread]: ERROR: Unimplemented feature found! ("+nextNode.type.name()+")");
+                throw new NodeProcessException(NodeProcessException.Type.UNKNOWN_ERROR,
+                              NodeProcessException.UNIMPLEMENTED_FEATURE, nextNode);
             }
-            //
+
+            // After checking variations, nullify NextNode to get ready for taking new one from Queue
+            nextNode = null;
         }
+
+        // Perform Basic Chain calculations
+        thisBlockRes.blockRes = new CalcNode(CalcNode.Types.NUMBER, "numb", new BigDecimal(1337));
+
         return thisBlockRes;
     }
 
@@ -305,15 +383,15 @@ public class StringCalculator extends AsyncQueueCalculatorPlugin{
         }
 
         public Code code;
-        public BigDecimal blockRes;
+        public CalcNode blockRes;
 
         // Statistics of the block.
         public int iterations = 0, bopCount = 0, numCount = 0, funCount = 0, conCount = 0;
-        public int specCount = 0, blockCount = 0;
+        public int specCount = 0, blockCount = 0, ctlNodeCount = 0, calcNodeCount = 0;
 
         //public Result res;
         public RecursiveResult(Code cod, BigDecimal bigRes){
-            code = cod; blockRes = bigRes;
+            code = cod; blockRes = new CalcNode( CalcNode.Types.NUMBER, null, bigRes );
         }
 
         public void addStats(RecursiveResult res){
@@ -324,13 +402,16 @@ public class StringCalculator extends AsyncQueueCalculatorPlugin{
             conCount += res.conCount;
             specCount += res.specCount;
             blockCount += res.blockCount;
+            ctlNodeCount += res.ctlNodeCount;
+            calcNodeCount += res.calcNodeCount;
         }
 
         @Override
         public String toString(){
             return "RecursiveResult: "+this.getClass()+"\n Code: "+code.name()+"\n BlockRes: "+blockRes+
-                   "\n Stats: iter="+iterations+", bops="+bopCount+", nums="+numCount+", funs="+funCount+
-                   ", cons="+conCount+", blocks="+blockCount+", specs:"+specCount+"\n";
+                   "\n Stats: iterations:"+iterations+", bops:"+bopCount+", nums:"+numCount+", funs:"+funCount+
+                   ", cons:"+conCount+"\n blocks:"+blockCount+", specs:"+specCount+", ctlNodes:"+ctlNodeCount+
+                   ", calcNodes:"+calcNodeCount+"\n";
         }
     }
 
@@ -358,7 +439,11 @@ public class StringCalculator extends AsyncQueueCalculatorPlugin{
      * TESTING-DEBUGGING.
      */
     public static void TestDEBUG1(){
-        String calcExpr = "9+5;o+(4789.54+log2(pi)+++87)*2+x";
+        String calcExpr;
+        calcExpr = "9+5+((4789.54+log2(pi)+87)*2+e)";
+        /*calcExpr = "2*+892 +    333.5+5^8 +log258(x)+(875+4-sin(pi)*2(opa())) +" +
+        " 3*+8781.122 ((/ 0) (((2.654**2))    ((33453.54+5^2.58) +laog258(x+y+pi-(2*42.5446)))+(875+4.45654-sin(pi))*2(opa()))+(++2+))+";*/
+
         OutF.setOpened(true);
 
         System.out.println("[MainTester]: Starting StringCalculator Test. Expression:" +
@@ -370,7 +455,7 @@ public class StringCalculator extends AsyncQueueCalculatorPlugin{
 
         AsyncQueueCalculatorPlugin.Result res = calc.startCalculation(new Query(calcExpr, 0, QueryType.WHOLE_QUERY, 1));
 
-        System.out.println("[MainTester]: Got result! Value: "+res+ "\nTime: " + (double) (System.nanoTime() - start1) / 1000.0 + " us\n");
+        System.out.println("[MainTester]: Got result! Value: "+res+ "\n\nTime: " + (double) (System.nanoTime() - start1) / 1000.0 + " us\n");
     }
 }
 
