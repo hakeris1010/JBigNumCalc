@@ -1,6 +1,7 @@
 package jbignums.CalculatorPlugin.StringCalculator;
 
 import com.sun.istack.internal.NotNull;
+import javafx.util.Pair;
 import jbignums.CalculatorPlugin.AsyncQueueCalculatorPlugin;
 import jbignums.CalculatorPlugin.CalculatorPlugin;
 import jbignums.CalculatorPlugin.StringCalculator.StringExpressionParser.CalcNode;
@@ -11,7 +12,6 @@ import java.math.BigDecimal;
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
-import java.util.ListIterator;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -79,16 +79,20 @@ public class StringCalculator extends AsyncQueueCalculatorPlugin{
      */
     public static class NodeProcessException extends Exception{
         public static final int DEFAULT                  = 0;
-        public static final int WRONG_OPERATOR_POSITIONS = 1 << 0;
-        public static final int WRONG_FUNCTION_ARGUMENTS = 1 << 1;
-        public static final int UNKNOWN_FUNCTION         = 1 << 2;
-        public static final int UNKNOWN_CONSTANT         = 1 << 3;
-        public static final int UNIMPLEMENTED_FEATURE    = 1 << 4;
+        public static final int CONSEQUENT_OPERATORS     = 1 << 1;
+        public static final int CONSEQUENT_NUMBERS       = 1 << 2;
+        public static final int WRONG_FUNCTION_ARGUMENTS = 1 << 3;
+        public static final int UNKNOWN_FUNCTION         = 1 << 4;
+        public static final int UNKNOWN_CONSTANT         = 1 << 5;
+        public static final int UNIMPLEMENTED_FEATURE    = 1 << 6;
+        public static final int INVALID_NODE             = 1 << 7;
+        public static final int WRONG_FIRST_OPERATOR     = 1 << 8;
 
         public enum Type{
             TERMINATION_REQUESTED,
             SYNTAX_ERROR,
             CALCULATION_ERROR,
+            INTERNAL_ERROR,
             UNKNOWN_ERROR
         }
 
@@ -180,6 +184,7 @@ public class StringCalculator extends AsyncQueueCalculatorPlugin{
 
         // Mark the start of calculation (Superclass-handled).
         setCalculationStart();
+        long wholeTime = System.nanoTime();
 
         synchronized (this){
             // Create a new parser object, and bind it with the terminating vars and the nodequeue.
@@ -191,7 +196,8 @@ public class StringCalculator extends AsyncQueueCalculatorPlugin{
         // Start the parser thread, and after that start the NodeGetter on current thread.
         new Thread( () -> {
             long start1 = System.nanoTime();
-            System.out.println("\n[ParseThread]: Parsing the expression...\n");
+            System.out.println("\n[ParseThread]: Starting Parsing the expression... Time from the start of "+
+                    "startCalculation : " + (double) (System.nanoTime() - wholeTime) / 1000.0 + " us\n");
             // Parse the expression, and when done, assign rootNode.
             rootNode.set( currentParser.parseString( lastQuery.expr ) );
             System.out.println("\n[ParseThread]: Parsing complete! Time: " + (double) (System.nanoTime() - start1) / 1000.0 + " us\n");
@@ -200,8 +206,15 @@ public class StringCalculator extends AsyncQueueCalculatorPlugin{
         // On current thread, start the Calculation Processor, which takes nodes from queue and processes them.
         Result procRes;
         try {
+            System.out.println("\n[StringCalculator.startCalculation()]: Calling the recursive calculation processor."+
+                    " Time from the start: " + (double) (System.nanoTime() - wholeTime) / 1000.0 + " us\n");
+
             // After the processing is complete, assign the result.
+            long start1 = System.nanoTime();
             RecursiveResult ros = startQueueProcessing(new CalcNode(CalcNode.Types.BLOCK, null, null), 0, calcMode);
+
+            System.out.println("\n[StringCalculator.startCalculation()]: Calculation complete. startQueueProcessing " +
+                    "completed in time: " + (double) (System.nanoTime() - start1) / 1000.0 + " us\n");
             if(ros.blockRes==null) {
                 throw new NodeProcessException(NodeProcessException.Type.UNKNOWN_ERROR, 0, null);
             }
@@ -233,7 +246,8 @@ public class StringCalculator extends AsyncQueueCalculatorPlugin{
         }
         // Mark the end of calculation (Superclass-handled).
         // Notifies the waiters and sets isCalculating to false.
-        System.out.println("[StringCalculator.startCalculation()]: Ending Calculation...\n");
+        System.out.println("[StringCalculator.startCalculation()]: Ending Calculation. Whole time: "+
+                            (double) (System.nanoTime() - wholeTime) / 1000.0 + " us\n");
         setCalculationEnd();
 
         return lastResult;
@@ -253,22 +267,27 @@ public class StringCalculator extends AsyncQueueCalculatorPlugin{
      * @return - the StringCalculator.Result object representing a final calculation result.
      */
     private @NotNull RecursiveResult startQueueProcessing(CalcNode rootNode, int level, int flags) throws NodeProcessException {
+        boolean print = OutF.LoggedMethods.StringCalculator_startQueueProcessing;
+
         RecursiveResult thisBlockRes = new RecursiveResult(RecursiveResult.Code.NORMAL, null);
         // Bools used for checking the last node status in the basic operation chain.
-        boolean afterOperator = false, afterNumber = false, timeToQuit = false;
+        boolean timeToQuit = false;
 
         CalcNode basicOperationChain = new CalcNode(CalcNode.Types.BLOCK, null, null);
         CalcNode nextNode = null;
 
-        while ( !Checkers.isOneAtomicBooleanSet(terminators) && !timeToQuit ) {
+        while ( !Checkers.isOneAtomicBooleanSet(terminators) && (!timeToQuit || nextNode!=null) ) {
             if(nextNode == null) {
                 try {
                     nextNode = nodeQueue.take();
-                    OutF.logfn(level * 2, "[NodeProcessThread]: Taken node from QueUe: " + CalcNode.toBasicStaring(nextNode));
+                    OutF.logfn(print, level * 2, "[NodeProcessThread]: Taken node from QueUe: " + CalcNode.toBasicStaring(nextNode));
                 } catch (InterruptedException e) {
                     e.printStackTrace();
                     throw new NodeProcessException(NodeProcessException.Type.TERMINATION_REQUESTED, 0);
                 }
+            }
+            else{
+                OutF.logfn(print, level * 2, "[NodeProcessThread]: nextNode posted on last iteration: " + CalcNode.toBasicStaring(nextNode));
             }
             thisBlockRes.iterations++;
 
@@ -282,7 +301,7 @@ public class StringCalculator extends AsyncQueueCalculatorPlugin{
             //=========================================//
             // Check Control Command Nodes
             case PARSE_START:
-                OutF.logfn("Parse has been started.");
+                OutF.logfn(print, "Parse has been started.");
                 thisBlockRes.ctlNodeCount++;
                 break;
             // Check if end node, if yes, parsing has ended, return value signaling the end of recursion.
@@ -302,6 +321,9 @@ public class StringCalculator extends AsyncQueueCalculatorPlugin{
             case BLOCK:
                 thisBlockRes.ctlNodeCount++;
                 thisBlockRes.blockCount++;
+
+                if(nextNode.data!=null && nextNode.data.equals(CalcNode.BlockTypesData.FUNCTION_BLOCK))
+                    thisBlockRes.funCount++;
 
                 // The nextNode already contains all needed next block's information in it's attributes -
                 // the BlockType (simple, function, set), and the function name if it's a function.
@@ -328,40 +350,26 @@ public class StringCalculator extends AsyncQueueCalculatorPlugin{
              * and Numbers, like 2+6*4/5.
              * All blocks and functions must be converted into this type.
              * Then ultimate calculation is done in the chain like this.
+             *
+             * - NO consequency errors are checked at this stage. Consequent same-type nodes like (+++222) are allowed.
+             * - Errors like this are checked on basic chain processors.
              */
             // Basic operator (+,-,*,/)
             case BASIC_OP:
-                // Check for errors
-                // If situation like "*8..." or "...+*..."
-                if(basicOperationChain.getChilds().size()!=0 ? afterOperator : (!nextNode.data.equals("-") && !nextNode.data.equals("+"))) {
-                    throw new NodeProcessException(NodeProcessException.Type.SYNTAX_ERROR,
-                              NodeProcessException.WRONG_OPERATOR_POSITIONS, nextNode);
-                }
-                // If no error, add this operator to Basic Operation Chain
-                basicOperationChain.addChild( nextNode );
-
-                afterOperator = true;
-                afterNumber = false;
                 thisBlockRes.bopCount++;
+                basicOperationChain.addChild( nextNode );
                 break;
             // Basic Number or Constant
-            case NUMBER:
             case CONSTANT:
-                if(rootNode.data == CalcNode.BlockTypesData.CALC_BLOCK && afterNumber){
-                    throw new NodeProcessException(NodeProcessException.Type.SYNTAX_ERROR,
-                              NodeProcessException.WRONG_OPERATOR_POSITIONS, nextNode);
-                }
-
-                basicOperationChain.addChild( nextNode );
-
-                afterNumber = true;
-                afterOperator = false;
+                thisBlockRes.conCount++;
+            case NUMBER:
                 thisBlockRes.numCount++;
+                basicOperationChain.addChild( nextNode );
                 break;
 
             // Check unimplemented features (variables, lists, and all other node types which are not supported).
             default:
-                OutF.logfn(level*2, "[NodeProcessThread]: ERROR: Unimplemented feature found! ("+nextNode.type.name()+")");
+                OutF.logfn(print, level*2, "[NodeProcessThread]: ERROR: Unimplemented feature found! ("+nextNode.type.name()+")");
                 throw new NodeProcessException(NodeProcessException.Type.UNKNOWN_ERROR,
                               NodeProcessException.UNIMPLEMENTED_FEATURE, nextNode);
             }
@@ -370,10 +378,211 @@ public class StringCalculator extends AsyncQueueCalculatorPlugin{
             nextNode = null;
         }
 
-        // Perform Basic Chain calculations
-        thisBlockRes.blockRes = new CalcNode(CalcNode.Types.NUMBER, "numb", new BigDecimal(1337));
 
+        // Set the basic calculation node statistic.
+        thisBlockRes.calcNodeCount += basicOperationChain.getChilds().size();
+
+        // If the block we're working on is a Function, launch the Function Calculator on this node.
+        if(rootNode.data != null && rootNode.data.equals(CalcNode.BlockTypesData.FUNCTION_BLOCK)){
+            thisBlockRes.blockRes = calculateFunction(basicOperationChain);
+        }
+        // Perform Basic Chain calculations
+        else if(rootNode.data == null || rootNode.data.equals(CalcNode.BlockTypesData.CALC_BLOCK)){
+            thisBlockRes.blockRes = calculateBasicChain(basicOperationChain);
+        }
+        else{
+            thisBlockRes.blockRes = basicOperationChain;
+        }
+
+        //thisBlockRes.blockRes = new CalcNode(CalcNode.Types.NUMBER, "numb", new BigDecimal(1337));
         return thisBlockRes;
+    }
+
+    /**
+     * Function calculates a chain of simple operations, like 2+3*8/5.
+     * - Valid supported operations:
+     *   - Simple: + - * / %
+     *   - Functional: ^
+     *   - Bitwise: &
+     *
+     * - Processed Node Types:
+     *   - Basic Operator
+     *   - Number
+     * All other node types throw an error.
+     *
+     * @param rootNode - block-type node, containing one layer of childs, which are basic operators and numbers.
+     * @return Number representation of the chain's result.
+     */
+    private CalcNode calculateBasicChain(CalcNode rootNode) throws NodeProcessException {
+        boolean print = OutF.LoggedMethods.StringCalculator_simpleOperationChain;
+
+        // No error checking is performed because we assume it is called from startQueueProcessing(),
+        // with all error checking already done, and the chain is of perfectly correct state.
+        boolean onMulDiv = false, onExp = false, onOther = false;
+        boolean afterNumber = false, afterOperator = false, timeToQuit = false;
+
+        BigDecimal currResult = new BigDecimal(0), mulRes = null, expRes = null;
+        String lastOp = "+", lastAS = null, lastMD = null, lastEXP = null;
+
+        // Pair-based calculation. For each priority level there is current pair.
+        // A pair is Number, Operator. (like 2+)
+        Pair<CalcNode, CalcNode> ASpair, MDpair, EXpair, currPair = null, lastPair = null;
+
+        List<CalcNode> nodeList = rootNode.getChilds();
+        int iterator = 0;
+
+        CalcNode currNode, currNode1;
+
+        // Print the basic node chain
+        OutF.logfn(print, "[ NodeProcessThread]: calculateBasicChain(). Basic OP chain:"+rootNode.toFullRecursiveString());
+
+        // Acquire the first pair.
+        // Check the First Operator errors (1st operator can be only + or -)
+        if( iterator < nodeList.size() ){
+            currNode = nodeList.get(iterator);
+            if(currNode.type==CalcNode.Types.BASIC_OP) {
+                if (!currNode.data.equals("-") && !currNode.data.equals("+")) {
+                    throw new NodeProcessException(NodeProcessException.Type.SYNTAX_ERROR,
+                            NodeProcessException.WRONG_FIRST_OPERATOR);
+                }
+                currNode1 = currNode;
+                currNode = new CalcNode(CalcNode.Types.NUMBER, null, new BigDecimal(0));
+            }
+            else if(currNode.type==CalcNode.Types.NUMBER){
+                currNode1 = (iterator + 1 < nodeList.size() ? nodeList.get(iterator+1) :
+                             new CalcNode(CalcNode.Types.BASIC_OP, "+", null));
+            }
+
+            currPair = new Pair<>(currNode, currNode1);
+        }
+        iterator+=2;
+
+        while( currPair != null && iterator < nodeList.size() ){
+            lastPair = currPair;
+
+            currPair = new Pair<>(nodeList.get(iterator), (iterator + 1 < nodeList.size() ? nodeList.get(iterator+1) :
+                    new CalcNode(CalcNode.Types.BASIC_OP, "+", null)));
+
+            try {
+                if(currPair.getValue().type == CalcNode.Types.BASIC_OP) {
+                    // Check consequent operator errors
+                    if (afterOperator) {
+                        throw new NodeProcessException(NodeProcessException.Type.SYNTAX_ERROR,
+                                NodeProcessException.CONSEQUENT_OPERATORS);
+                    }
+
+                    lastOp = currNode.data;
+
+                    switch (lastOp) {
+                        // Lowest priority (AS)
+                        case "-":
+                        case "+":
+                            // Situation like 1+2*2+3, calculated 2*2, was onMulDiv, found +, now we must add
+                            // the 2*2 (mulRes=4) to
+                            if(onMulDiv && !onExp){
+                                currNode = new CalcNode(CalcNode.Types.NUMBER, null, mulRes);
+                                iterator--;
+
+                                lastOp = lastAS;
+
+                            }
+                            else {
+                                onMulDiv = false;
+                                onExp = false;
+                                lastAS = lastOp;
+                            }
+                            break;
+                        // Higher priority (MD)
+                        case "*":
+                        case "/":
+                            if (onExp) {
+                                currNode = new CalcNode(CalcNode.Types.NUMBER, null, expRes);
+                            }
+
+                            onMulDiv = true;
+                            onExp = false;
+                            lastMD = lastOp;
+                            break;
+                        // Higher priority (E)
+                        case "^":
+                            onExp = true;
+                            lastEXP = lastOp;
+                            break;
+                    }
+
+                    afterOperator = true;
+                    afterNumber = false;
+                }
+                if(currNode.type == CalcNode.Types.NUMBER) {
+                    // Check consequent operator errors
+                    if (afterNumber) {
+                        throw new NodeProcessException(NodeProcessException.Type.SYNTAX_ERROR,
+                                NodeProcessException.CONSEQUENT_NUMBERS);
+                    }
+
+                    // Assign this number to a temporary result if not on higher priority, to
+                    // get ready for the possible Higher priority operation coming next (*,/,^)
+                    if (!onMulDiv)
+                        mulRes = currNode.number;
+                    if (!onExp)
+                        expRes = currNode.number;
+
+                    /* Now perform operations based on Last OpCode.
+                     * - We catch null pointer exceptions, which means some syntax error occurred
+                     *   because normally no variables should be "null".
+                     * - Also catch ArithmeticException, which is thrown by BigDecimal API, indicating that an
+                     *   error occured during calculation, or result is invalid (e.g. divide by zero)
+                     */
+                    switch (lastOp) {
+                        // Lowest priority (AS)
+                        case "-":
+                            currResult = currResult.subtract(currNode.number);
+                            break;
+                        case "+":
+                            currResult = currResult.add(currNode.number);
+                            break;
+                        // Higher priority (MD)
+                        case "*":
+                            mulRes = mulRes.multiply(currNode.number);
+                            break;
+                        case "/":
+                            mulRes = mulRes.divide(currNode.number);
+                            break;
+                        // Higher priority (E)
+                        case "^":
+                            // Not yet impl'd
+                            expRes = expRes.pow(currNode.number.intValue());
+                            break;
+                    }
+
+                    afterNumber = true;
+                    afterOperator = false;
+
+                    // Nullify currNode to get ready for next node.
+                    currNode = null;
+                }
+                else {
+                    throw new NodeProcessException(NodeProcessException.Type.INTERNAL_ERROR,
+                            NodeProcessException.INVALID_NODE);
+                }
+            }
+            catch (ArithmeticException e) {
+                throw new NodeProcessException(NodeProcessException.Type.CALCULATION_ERROR, 0, currNode);
+            } catch (NullPointerException e) {
+                throw new NodeProcessException(NodeProcessException.Type.SYNTAX_ERROR, 0, currNode);
+            }
+
+            if(currNode==null && iterator < nodeList.size()) {
+                currNode = nodeList.get(iterator);
+                iterator++;
+            }
+        }
+
+        return new CalcNode(CalcNode.Types.NUMBER, "calculateBasicChain", currResult);
+    }
+
+    private CalcNode calculateFunction(CalcNode funcNode){
+        return new CalcNode(CalcNode.Types.NUMBER, "func", new BigDecimal(1337));
     }
 
     private static class RecursiveResult{
@@ -440,9 +649,10 @@ public class StringCalculator extends AsyncQueueCalculatorPlugin{
      */
     public static void TestDEBUG1(){
         String calcExpr;
-        calcExpr = "9+5+((4789.54+log2(pi)+87)*2+e)";
-        /*calcExpr = "2*+892 +    333.5+5^8 +log258(x)+(875+4-sin(pi)*2(opa())) +" +
-        " 3*+8781.122 ((/ 0) (((2.654**2))    ((33453.54+5^2.58) +laog258(x+y+pi-(2*42.5446)))+(875+4.45654-sin(pi))*2(opa()))+(++2+))+";*/
+        calcExpr = "+2-(0)";
+        /*calcExpr = "2*892 +    333.5+5^8 +log258(5)+(875+4-sin(pi)*2(opa())) +" +
+        " 3*8781.122 ((0) (((2.654*2))    ((33453.54+5^2.58) +laog258(pi-(2*42.5446)))+(875+4.45654-sin(pi))*2(opa()))+(2))";
+        */
 
         OutF.setOpened(true);
 

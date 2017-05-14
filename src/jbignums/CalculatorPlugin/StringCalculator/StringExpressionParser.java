@@ -67,7 +67,8 @@ public class StringExpressionParser {
         }
 
         public static final class BlockTypesData{
-            public static final String CALC_BLOCK = null;
+            // Null implicitly means that CALC_BLOCK.
+            public static final String CALC_BLOCK = "block";
             public static final String FUNCTION_BLOCK = "function";
             public static final String SET_BLOCK = "list";
         }
@@ -98,13 +99,16 @@ public class StringExpressionParser {
 
         @Override
         public String toString(){
-            return StringExpressionParser.printCalcNodeToString(this, 0);
+            return toBasicStaring(this);
         }
 
         public static String toBasicStaring(CalcNode nextNode){
             return (nextNode == null ? "(null)" : "Type: \"" + nextNode.type.name() + "\"" +
                             (nextNode.data != null ? ", Data: " + nextNode.data : "") +
                             (nextNode.number != null ? ", Number: " + nextNode.number : "") );
+        }
+        public String toFullRecursiveString(){
+            return StringExpressionParser.printCalcNodeToString(this, 0);
         }
     }
 
@@ -113,9 +117,11 @@ public class StringExpressionParser {
      */
     public static class CalcNodeParseException extends RuntimeException{
         public enum Code {
-             ERR_INVALID_CHARS,
+             ERR_INVALID_TOKEN,
              ERR_BAD_PARENTHESES,
-             TERMINATE_REQUESTED
+             TERMINATE_REQUESTED,
+             ERR_FUNCTION_ARGLIST_EXPECTED,
+             ERR_COMMA_NOTFUNCTION
         }
 
         private int where;
@@ -143,6 +149,7 @@ public class StringExpressionParser {
      * Calculation expression patterns.
      */
     public static final class Patterns {
+        // Parsing patterns
         public static final Pattern NUMBER = Pattern.compile("^[+-]?(?:\\d*\\.)?\\d+$");
         public static final Pattern BASIC_OPERATOR = Pattern.compile("[\\-+*/^%&]");
         public static final Pattern BLOCK_STARTER = Pattern.compile("[(]");
@@ -153,7 +160,8 @@ public class StringExpressionParser {
         public static final Pattern CONSTANT = Pattern.compile("(?:e|pi)");
         public static final Pattern VARIABLE = Pattern.compile("[xXyYzZ](?:\\d*)?");
 
-        //========================================================//
+        // Operator priorities
+        public static final Pattern BOP_PRIORITY_1 = Pattern.compile("[-+]");
     }
 
     private static final class RecursiveFlags {
@@ -288,6 +296,8 @@ public class StringExpressionParser {
          *    - Variable (x1, x2, y1, y2)
          * 7. Array bracket: {, [, ], }
          */
+        boolean print = OutF.LoggedMethods.StringExpressionParser_getNodeBlock;
+
         boolean timeToEnd = false;
         int iterations = 0;
         CalcNode newNode;
@@ -295,8 +305,8 @@ public class StringExpressionParser {
         // e.g, function, list, or simple block (null).
         String blockType = null, blockFunctionName = null;
 
-        OutF.logfn("\n"+StrF.rep(' ', level)+"----------------");
-        OutF.logfn(level*2,"getNodeBlock(): level: "+level+", flags: "+flags);
+        OutF.logfn(print, "\n"+StrF.rep(' ', level)+"----------------");
+        OutF.logfn(print, level*2,"getNodeBlock(): level: "+level+", flags: "+flags);
 
         // If currently inspected block node is a function, push the Arg Start node (BLOCK_START), because args=blocks
         if(mainNode.data!=null && mainNode.data.equals(CalcNode.BlockTypesData.FUNCTION_BLOCK)) {
@@ -318,7 +328,7 @@ public class StringExpressionParser {
 
             // Block start spotted. Use the (optionally) earlier set up type variable to specify type.
             if (reader.hasNext(Patterns.BLOCK_STARTER)) {
-                OutF.logfn(level*2, "Found block starter: "+reader.next());
+                OutF.logfn(print, level*2, "Found block starter: "+reader.next());
 
                 // Create new node, and add it's Block Type and, if specified (is a function), function name.
                 newNode = new CalcNode(CalcNode.Types.BLOCK, blockType, null);
@@ -342,14 +352,14 @@ public class StringExpressionParser {
             // If BlockType variable has been set on node just before, but current node is
             // NOT a Block Starter, it means Syntax Error Occur3d!!!
             else if(blockType != null){
-                throw new CalcNodeParseException(CalcNodeParseException.Code.ERR_BAD_PARENTHESES, reader.next(), 0);
+                throw new CalcNodeParseException(CalcNodeParseException.Code.ERR_FUNCTION_ARGLIST_EXPECTED, reader.next(), 0);
             }
 
             /* End block parenthesis:
              * - This function was called recursively, and the end of block is found --> return.
              */
             else if (reader.hasNext(Patterns.BLOCK_ENDER)){
-                OutF.logfn(level*2, "Found block ender: "+reader.next());
+                OutF.logfn(print, level*2, "Found block ender: "+reader.next());
                 //reader.next();
                 timeToEnd = true;
             }
@@ -357,30 +367,30 @@ public class StringExpressionParser {
             // Check for basic operators (+,-,*,/)
             else if (reader.hasNext(Patterns.BASIC_OPERATOR)){
                 newNode = new CalcNode(CalcNode.Types.BASIC_OP, reader.next(), null);
-                OutF.logfn(level*2, "Found a basic OP: "+newNode.data);
+                OutF.logfn(print, level*2, "Found a basic OP: "+newNode.data);
             }
             // Check for constants (pi, e, ...)
             else if (reader.hasNext(Patterns.CONSTANT)){
                 newNode = new CalcNode(CalcNode.Types.CONSTANT, reader.next(), null);
-                OutF.logfn(level*2, "Found a Constant: "+newNode.data);
+                OutF.logfn(print, level*2, "Found a Constant: "+newNode.data);
             }
             // Check for variables (x1, x2, ...)
             else if (reader.hasNext(Patterns.VARIABLE)){
                 newNode = new CalcNode(CalcNode.Types.VARIABLE, reader.next(), null);
-                OutF.logfn(level*2, "Found a Variable: "+newNode.data);
+                OutF.logfn(print, level*2, "Found a Variable: "+newNode.data);
             }
             // Check if next characters can be interpreted as a BigDecimal number.
             else if (reader.hasNextBigDecimal()) {
                 newNode = new CalcNode(CalcNode.Types.NUMBER, null, reader.nextBigDecimal());
-                OutF.logfn(level*2, "Found a BigDecimal number: "+newNode.number);
+                OutF.logfn(print, level*2, "Found a BigDecimal number: "+newNode.number);
             }
 
             // Check if we encountered a ','
             else if(reader.hasNext(Patterns.ARG_SEPARATOR)){
                 // fire an Exception if not on function
                 if((flags & RecursiveFlags.FUNCTION) != RecursiveFlags.FUNCTION)
-                    throw new CalcNodeParseException(CalcNodeParseException.Code.ERR_INVALID_CHARS, reader.next(), 0);
-                OutF.logfn(level*2, "Found an Arg Separator: "+reader.next());
+                    throw new CalcNodeParseException(CalcNodeParseException.Code.ERR_COMMA_NOTFUNCTION, reader.next(), 0);
+                OutF.logfn(print, level*2, "Found an Arg Separator: "+reader.next());
 
                 /* We treat individual function arguments as blocks, so we fire block start/end events on every
                  * function argument start/end.
@@ -400,8 +410,8 @@ public class StringExpressionParser {
                 blockType = CalcNode.BlockTypesData.FUNCTION_BLOCK;
                 blockFunctionName = reader.next();
 
-                OutF.logfn(level*2, "Found a Function Name: "+blockFunctionName);
-                OutF.logfn(level*2,"Starting argument collection recursively.");
+                OutF.logfn(print, level*2, "Found a Function Name: "+blockFunctionName);
+                OutF.logfn(print, level*2,"Starting argument collection recursively.");
                 // At next iteration, the next token must be a block starter.
                 // If next token if not a block starter, the blockType variable will be
                 // checked, and as it is not null, exception will be thrown.
@@ -409,8 +419,8 @@ public class StringExpressionParser {
 
             // If no valid variant has been found, Throw Error Exception!
             else{
-                OutF.logfn(level*2, "ERROR! No valid match found!");
-                throw new CalcNodeParseException(CalcNodeParseException.Code.ERR_INVALID_CHARS,
+                OutF.logfn(print, level*2, "ERROR! No valid match found!");
+                throw new CalcNodeParseException(CalcNodeParseException.Code.ERR_INVALID_TOKEN,
                                                  reader.hasNext() ? reader.next() : "", 0);
             }
 
@@ -418,7 +428,7 @@ public class StringExpressionParser {
             // After checking all variants, if newNode exists, add it.
             // If node is NULL, it means no node was recognized --> ERROR ON EXPRESSION!!!!
             if(newNode != null){
-                OutF.logfn(level*2, "Adding new node to root node.\n");
+                OutF.logfn(print, level*2, "Adding new node to root node.\n");
                 mainNode.addChild(newNode);
 
                 // Add the node to the queue if not a block-type.
@@ -431,7 +441,7 @@ public class StringExpressionParser {
         //   and this function was called recursively (block start has been spotted), but stream has
         //   no next token available, it means there were errors with parenthesis syntax. Fire an Exception!
         // - OR: If on main block (level 0), and still some data is unread, it means closing bracket has been encountered.
-        if((!timeToEnd && level > 0) || (level == 0 && reader.hasNext())){
+        if( (!timeToEnd && level > 0) || (level == 0 && reader.hasNext())){
             throw new CalcNodeParseException(CalcNodeParseException.Code.ERR_BAD_PARENTHESES,
                                              reader.hasNext() ? reader.next() : "", 0);
         }
@@ -612,7 +622,7 @@ public class StringExpressionParser {
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }
-            OutF.logfn(level*2, "[NodeProcessThread]: Got node: " +
+            OutF.logfn(true,level*2, "[NodeProcessThread]: Got node: " +
                     (nextNode == null ? "(null)" : "Type: \"" + nextNode.type.name() + "\"" +
                             (nextNode.data != null ? ", Data: " + nextNode.data : "") +
                             (nextNode.number != null ? ", Number: " + nextNode.number : "")
