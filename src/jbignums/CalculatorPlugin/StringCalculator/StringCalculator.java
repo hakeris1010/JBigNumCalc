@@ -422,159 +422,110 @@ public class StringCalculator extends AsyncQueueCalculatorPlugin{
         boolean afterNumber = false, afterOperator = false, timeToQuit = false;
 
         BigDecimal currResult = new BigDecimal(0), mulRes = null, expRes = null;
-        String lastOp = "+", lastAS = null, lastMD = null, lastEXP = null;
-
-        // Pair-based calculation. For each priority level there is current pair.
-        // A pair is Number, Operator. (like 2+)
-        Pair<CalcNode, CalcNode> ASpair, MDpair, EXpair, currPair = null, lastPair = null;
+        Pair<CalcNode, CalcNode> lastAS, lastMD, lastEXP, currPair = null, lastPair = null;
 
         List<CalcNode> nodeList = rootNode.getChilds();
         int iterator = 0;
 
-        CalcNode currNode, currNode1;
+        CalcNode currNode;
 
         // Print the basic node chain
         OutF.logfn(print, "[ NodeProcessThread]: calculateBasicChain(). Basic OP chain:"+rootNode.toFullRecursiveString());
 
-        // Acquire the first pair.
-        // Check the First Operator errors (1st operator can be only + or -)
-        if( iterator < nodeList.size() ){
-            currNode = nodeList.get(iterator);
+        lastAS = new Pair<>( new CalcNode(CalcNode.Types.NUMBER, null, new BigDecimal(0)),
+                               new CalcNode(CalcNode.Types.BASIC_OP, "+", null) );
+
+        lastMD = new Pair<>( new CalcNode(CalcNode.Types.NUMBER, null, new BigDecimal(0)),
+                               new CalcNode(CalcNode.Types.BASIC_OP, "*", null) );
+
+        lastEXP = new Pair<>( new CalcNode(CalcNode.Types.NUMBER, null, new BigDecimal(0)),
+                               new CalcNode(CalcNode.Types.BASIC_OP, "^", null) );
+
+        if( nodeList.size() > 0 ){
+            currNode = nodeList.get(0);
             if(currNode.type==CalcNode.Types.BASIC_OP) {
-                if (!currNode.data.equals("-") && !currNode.data.equals("+")) {
-                    throw new NodeProcessException(NodeProcessException.Type.SYNTAX_ERROR,
-                            NodeProcessException.WRONG_FIRST_OPERATOR);
-                }
-                currNode1 = currNode;
-                currNode = new CalcNode(CalcNode.Types.NUMBER, null, new BigDecimal(0));
+                currPair = new Pair<>( new CalcNode(CalcNode.Types.NUMBER, null, new BigDecimal(0)), currNode);
+                iterator = 1;
             }
             else if(currNode.type==CalcNode.Types.NUMBER){
-                currNode1 = (iterator + 1 < nodeList.size() ? nodeList.get(iterator+1) :
-                             new CalcNode(CalcNode.Types.BASIC_OP, "+", null));
+                currPair = null;
+            }
+            else throw new NodeProcessException(NodeProcessException.Type.INTERNAL_ERROR, 0, currNode);
+        }
+
+        while( iterator < nodeList.size() ){
+            if(currPair == null) {
+                currPair = new Pair<>(nodeList.get(iterator), (iterator + 1 < nodeList.size() ? nodeList.get(iterator + 1) :
+                        new CalcNode(CalcNode.Types.BASIC_OP, "+", null)));
+                iterator+=2;
             }
 
-            currPair = new Pair<>(currNode, currNode1);
-        }
-        iterator+=2;
-
-        while( currPair != null && iterator < nodeList.size() ){
-            lastPair = currPair;
-
-            currPair = new Pair<>(nodeList.get(iterator), (iterator + 1 < nodeList.size() ? nodeList.get(iterator+1) :
-                    new CalcNode(CalcNode.Types.BASIC_OP, "+", null)));
-
-            try {
-                if(currPair.getValue().type == CalcNode.Types.BASIC_OP) {
-                    // Check consequent operator errors
-                    if (afterOperator) {
-                        throw new NodeProcessException(NodeProcessException.Type.SYNTAX_ERROR,
+            // check errors
+            if(currPair.getKey().type != CalcNode.Types.NUMBER ||
+               currPair.getValue().type != CalcNode.Types.BASIC_OP){
+                throw new NodeProcessException(NodeProcessException.Type.SYNTAX_ERROR,
                                 NodeProcessException.CONSEQUENT_OPERATORS);
-                    }
+            }
 
-                    lastOp = currNode.data;
+            // At this point it is known that key=NUMBER, value=BASIC_OP
+            try {
+                // Check current pair's operator
+                BigDecimal lastNu = lastPair.getKey().number;
+                BigDecimal nu = currPair.getKey().number;
+                String lastOp = lastPair.getValue().data;
+                String op = currPair.getValue().data;
+                switch(currPair.getValue().data) {
+                    case "+":
+                    case "-":
+                        onMulDiv = false;
+                        onExp = false;
 
-                    switch (lastOp) {
-                        // Lowest priority (AS)
-                        case "-":
-                        case "+":
-                            // Situation like 1+2*2+3, calculated 2*2, was onMulDiv, found +, now we must add
-                            // the 2*2 (mulRes=4) to
-                            if(onMulDiv && !onExp){
-                                currNode = new CalcNode(CalcNode.Types.NUMBER, null, mulRes);
-                                iterator--;
 
-                                lastOp = lastAS;
 
-                            }
-                            else {
-                                onMulDiv = false;
-                                onExp = false;
-                                lastAS = lastOp;
-                            }
-                            break;
-                        // Higher priority (MD)
-                        case "*":
-                        case "/":
-                            if (onExp) {
-                                currNode = new CalcNode(CalcNode.Types.NUMBER, null, expRes);
-                            }
 
-                            onMulDiv = true;
-                            onExp = false;
-                            lastMD = lastOp;
-                            break;
-                        // Higher priority (E)
-                        case "^":
-                            onExp = true;
-                            lastEXP = lastOp;
-                            break;
-                    }
+                        break;
+                    case "*":
+                    case "/":
+                        onMulDiv = true;
+                        onExp = false;
 
-                    afterOperator = true;
-                    afterNumber = false;
-                }
-                if(currNode.type == CalcNode.Types.NUMBER) {
-                    // Check consequent operator errors
-                    if (afterNumber) {
+                        break;
+                    case "^":
+                        onExp = true;
+
+                        break;
+                    default:
                         throw new NodeProcessException(NodeProcessException.Type.SYNTAX_ERROR,
-                                NodeProcessException.CONSEQUENT_NUMBERS);
-                    }
-
-                    // Assign this number to a temporary result if not on higher priority, to
-                    // get ready for the possible Higher priority operation coming next (*,/,^)
-                    if (!onMulDiv)
-                        mulRes = currNode.number;
-                    if (!onExp)
-                        expRes = currNode.number;
-
-                    /* Now perform operations based on Last OpCode.
-                     * - We catch null pointer exceptions, which means some syntax error occurred
-                     *   because normally no variables should be "null".
-                     * - Also catch ArithmeticException, which is thrown by BigDecimal API, indicating that an
-                     *   error occured during calculation, or result is invalid (e.g. divide by zero)
-                     */
-                    switch (lastOp) {
-                        // Lowest priority (AS)
-                        case "-":
-                            currResult = currResult.subtract(currNode.number);
-                            break;
-                        case "+":
-                            currResult = currResult.add(currNode.number);
-                            break;
-                        // Higher priority (MD)
-                        case "*":
-                            mulRes = mulRes.multiply(currNode.number);
-                            break;
-                        case "/":
-                            mulRes = mulRes.divide(currNode.number);
-                            break;
-                        // Higher priority (E)
-                        case "^":
-                            // Not yet impl'd
-                            expRes = expRes.pow(currNode.number.intValue());
-                            break;
-                    }
-
-                    afterNumber = true;
-                    afterOperator = false;
-
-                    // Nullify currNode to get ready for next node.
-                    currNode = null;
+                                NodeProcessException.UNIMPLEMENTED_FEATURE, currPair.getValue());
                 }
-                else {
-                    throw new NodeProcessException(NodeProcessException.Type.INTERNAL_ERROR,
-                            NodeProcessException.INVALID_NODE);
-                }
+
+                        if(!onMulDiv && !onExp){
+                            if(lastOp.equals("-"))
+                                lastAS.getKey().number = lastAS.getKey().number.subtract(nu);
+                            else
+                                lastAS.getKey().number = lastAS.getKey().number.add(nu);
+                            // Set the last operator to current
+                            lastAS.getValue().data = currPair.getValue().data;
+                        }
+                        else if(onMulDiv && !onExp) {
+                            if (lastOp.equals("/"))
+                                mulRes = mulRes.divide(nu);
+                            else
+                                mulRes = mulRes.multiply(nu);
+
+                            currPair = new Pair<>(new CalcNode(CalcNode.Types.NUMBER, null, mulRes), currPair.getValue());
+                            lastPair = lastAS;
+                        }
+                        else if(onExp) {
+                            expRes = expRes.pow(nu.intValue());
+
+
+                        }
             }
             catch (ArithmeticException e) {
                 throw new NodeProcessException(NodeProcessException.Type.CALCULATION_ERROR, 0, currNode);
             } catch (NullPointerException e) {
                 throw new NodeProcessException(NodeProcessException.Type.SYNTAX_ERROR, 0, currNode);
-            }
-
-            if(currNode==null && iterator < nodeList.size()) {
-                currNode = nodeList.get(iterator);
-                iterator++;
             }
         }
 
