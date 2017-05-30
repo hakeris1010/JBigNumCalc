@@ -9,6 +9,7 @@ import jbignums.Helpers.Checkers;
 import jbignums.Helpers.OutF;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
@@ -27,6 +28,10 @@ import java.util.concurrent.atomic.AtomicReference;
  *  - When the job is done, the end result is published as a specific format.
  */
 public class StringCalculator extends AsyncQueueCalculatorPlugin{
+
+    // Default scale for BigDecimals
+    public static final int DECIMAL_SCALE = 32;
+
     /**
      * StringCalculator-specific Query and Result.
      */
@@ -389,12 +394,12 @@ public class StringCalculator extends AsyncQueueCalculatorPlugin{
         // Perform Basic Chain calculations
         else if(rootNode.data == null || rootNode.data.equals(CalcNode.BlockTypesData.CALC_BLOCK)){
             thisBlockRes.blockRes = calculateBasicChain(basicOperationChain);
+            //thisBlockRes.blockRes = new CalcNode(CalcNode.Types.NUMBER, "numb", new BigDecimal(1337));
         }
         else{
             thisBlockRes.blockRes = basicOperationChain;
         }
 
-        //thisBlockRes.blockRes = new CalcNode(CalcNode.Types.NUMBER, "numb", new BigDecimal(1337));
         return thisBlockRes;
     }
 
@@ -419,13 +424,11 @@ public class StringCalculator extends AsyncQueueCalculatorPlugin{
         // No error checking is performed because we assume it is called from startQueueProcessing(),
         // with all error checking already done, and the chain is of perfectly correct state.
         boolean onMulDiv = false, onExp = false, onOther = false;
-        boolean afterNumber = false, afterOperator = false, timeToQuit = false;
 
-        BigDecimal currResult = new BigDecimal(0), mulRes = null, expRes = null;
         Pair<CalcNode, CalcNode> lastAS, lastMD, lastEXP, currPair = null, lastPair = null;
 
         List<CalcNode> nodeList = rootNode.getChilds();
-        int iterator = 0;
+        Iterator<CalcNode> iter = nodeList.iterator();
 
         CalcNode currNode;
 
@@ -435,17 +438,20 @@ public class StringCalculator extends AsyncQueueCalculatorPlugin{
         lastAS = new Pair<>( new CalcNode(CalcNode.Types.NUMBER, null, new BigDecimal(0)),
                                new CalcNode(CalcNode.Types.BASIC_OP, "+", null) );
 
-        lastMD = new Pair<>( new CalcNode(CalcNode.Types.NUMBER, null, new BigDecimal(0)),
+        lastMD = new Pair<>( new CalcNode(CalcNode.Types.NUMBER, null, new BigDecimal(1)),
                                new CalcNode(CalcNode.Types.BASIC_OP, "*", null) );
 
         lastEXP = new Pair<>( new CalcNode(CalcNode.Types.NUMBER, null, new BigDecimal(0)),
                                new CalcNode(CalcNode.Types.BASIC_OP, "^", null) );
 
-        if( nodeList.size() > 0 ){
+        lastPair = new Pair<>( new CalcNode(CalcNode.Types.NUMBER, null, new BigDecimal(0)),
+                               new CalcNode(CalcNode.Types.BASIC_OP, "+", null) );
+
+        if( iter.hasNext() ){
             currNode = nodeList.get(0);
-            if(currNode.type==CalcNode.Types.BASIC_OP) {
+            if(currNode.type==CalcNode.Types.BASIC_OP && (currNode.data.equals("+") || currNode.data.equals("-"))) {
                 currPair = new Pair<>( new CalcNode(CalcNode.Types.NUMBER, null, new BigDecimal(0)), currNode);
-                iterator = 1;
+                iter.next();
             }
             else if(currNode.type==CalcNode.Types.NUMBER){
                 currPair = null;
@@ -453,12 +459,13 @@ public class StringCalculator extends AsyncQueueCalculatorPlugin{
             else throw new NodeProcessException(NodeProcessException.Type.INTERNAL_ERROR, 0, currNode);
         }
 
-        while( iterator < nodeList.size() ){
+        while( iter.hasNext() ){
             if(currPair == null) {
-                currPair = new Pair<>(nodeList.get(iterator), (iterator + 1 < nodeList.size() ? nodeList.get(iterator + 1) :
+                currPair = new Pair<>(iter.next(), (iter.hasNext() ? iter.next() :
                         new CalcNode(CalcNode.Types.BASIC_OP, "+", null)));
-                iterator+=2;
             }
+
+            OutF.logfn(print, " calculateBasicChain(): got Pair: "+currPair.getKey()+" , "+currPair.getValue());
 
             // check errors
             if(currPair.getKey().type != CalcNode.Types.NUMBER ||
@@ -467,69 +474,134 @@ public class StringCalculator extends AsyncQueueCalculatorPlugin{
                                 NodeProcessException.CONSEQUENT_OPERATORS);
             }
 
+            // 2+ 2* 2+ 2^ 2+
+
             // At this point it is known that key=NUMBER, value=BASIC_OP
             try {
-                // Check current pair's operator
-                BigDecimal lastNu = lastPair.getKey().number;
-                BigDecimal nu = currPair.getKey().number;
+                BigDecimal curNu = currPair.getKey().number;
+                String curOp = currPair.getValue().data;
                 String lastOp = lastPair.getValue().data;
-                String op = currPair.getValue().data;
-                switch(currPair.getValue().data) {
+
+                // Check current pair's operator
+                switch( curOp ) {
                     case "+":
                     case "-":
+                        // Make calculation based on last nodes, if operator change occurred.
+                        if (onExp) {
+                            if (lastOp.equals("^"))
+                                lastEXP.getKey().number = lastEXP.getKey().number.pow(curNu.intValue());
+                            else throw new NodeProcessException(NodeProcessException.Type.INTERNAL_ERROR, 0);
+
+                            if (!onMulDiv)
+                                curNu = lastEXP.getKey().number;
+                            else {
+                                if (lastMD.getValue().data.equals("*"))
+                                    lastMD.getKey().number = lastMD.getKey().number.multiply(lastEXP.getKey().number);
+                                else if (lastMD.getValue().data.equals("/"))
+                                    lastMD.getKey().number = lastMD.getKey().number.divide(lastEXP.getKey().number, DECIMAL_SCALE, BigDecimal.ROUND_UP);
+                                curNu = lastMD.getKey().number;
+                            }
+                        }
+                        else if (onMulDiv && !onExp) {
+                            if (lastOp.equals("*"))
+                                lastMD.getKey().number = lastMD.getKey().number.multiply(curNu);
+                            else if (lastOp.equals("/"))
+                                lastMD.getKey().number = lastMD.getKey().number.divide(curNu, DECIMAL_SCALE, BigDecimal.ROUND_UP);
+                            else throw new NodeProcessException(NodeProcessException.Type.INTERNAL_ERROR, 0);
+
+                            curNu = lastMD.getKey().number;
+                        }
+
+                        // Make the calculations with the new curNu.
+                        if(lastAS.getValue().data.equals("+"))
+                            lastAS.getKey().number = lastAS.getKey().number.add(curNu);
+                        else if(lastAS.getValue().data.equals("-"))
+                            lastAS.getKey().number = lastAS.getKey().number.subtract(curNu);
+                        else throw new NodeProcessException(NodeProcessException.Type.INTERNAL_ERROR, 0);
+
+                        // Create a new lastAS: key is the result as-is, value (operator) is current operator we're sitting at.
+                        lastAS.getValue().data = curOp;
+                        // The last pair now will be the Add-Sub pair, because we are on Add-Sub.
+                        lastPair = lastAS;
+
+                        // Nullify the Exp and Mul pairs
+                        lastMD = new Pair<>( new CalcNode(CalcNode.Types.NUMBER, null, new BigDecimal(1)),
+                                             new CalcNode(CalcNode.Types.BASIC_OP, "*", null) );
+                        lastEXP = new Pair<>( new CalcNode(CalcNode.Types.NUMBER, null, new BigDecimal(0)),
+                                              new CalcNode(CalcNode.Types.BASIC_OP, "^", null) );
+
                         onMulDiv = false;
                         onExp = false;
-
-
-
-
                         break;
+
                     case "*":
                     case "/":
+                        if (onExp) {
+                            if (lastOp.equals("^"))
+                                lastEXP.getKey().number = lastEXP.getKey().number.pow(curNu.intValue());
+                            else throw new NodeProcessException(NodeProcessException.Type.INTERNAL_ERROR, 0);
+
+                            if (!onMulDiv)
+                                curNu = lastEXP.getKey().number;
+                            else {
+                                OutF.logfn(print, "onExp && onMulDiv: lastMD: "+lastMD+" , lastEXP: "+lastEXP);
+
+                                if (lastMD.getValue().data.equals("*"))
+                                    lastMD.getKey().number = lastMD.getKey().number.multiply(lastEXP.getKey().number);
+                                else if (lastMD.getValue().data.equals("/"))
+                                    lastMD.getKey().number = lastMD.getKey().number.divide(lastEXP.getKey().number, DECIMAL_SCALE, BigDecimal.ROUND_UP);
+                                //curNu = lastMD.getKey().number;
+                            }
+                        }
+
+                        // Make the calculations with the new curNu.
+                        if(lastMD.getValue().data.equals("*"))
+                            lastMD.getKey().number = lastMD.getKey().number.multiply(curNu);
+                        else if(lastMD.getValue().data.equals("/"))
+                            lastMD.getKey().number = lastMD.getKey().number.divide(curNu, DECIMAL_SCALE, BigDecimal.ROUND_UP);
+                        else throw new NodeProcessException(NodeProcessException.Type.INTERNAL_ERROR, 0);
+
+                        lastMD.getValue().data = curOp;
+                        lastPair = lastMD;
+
+                        // Nullify the Exp pair
+                        lastEXP = new Pair<>( new CalcNode(CalcNode.Types.NUMBER, null, new BigDecimal(0)),
+                                              new CalcNode(CalcNode.Types.BASIC_OP, "^", null) );
                         onMulDiv = true;
                         onExp = false;
-
                         break;
+
                     case "^":
-                        onExp = true;
+                        if(!onExp){
+                            lastEXP.getKey().number = curNu;
+                            lastEXP.getValue().data = curOp;
+                        }
+                        else{
+                            if (lastOp.equals("^"))
+                                lastEXP.getKey().number = lastEXP.getKey().number.pow(curNu.intValue());
+                            else throw new NodeProcessException(NodeProcessException.Type.INTERNAL_ERROR, 0);
+                        }
+                        lastPair = lastEXP;
 
+                        onExp = true;
                         break;
+
                     default:
                         throw new NodeProcessException(NodeProcessException.Type.SYNTAX_ERROR,
                                 NodeProcessException.UNIMPLEMENTED_FEATURE, currPair.getValue());
                 }
 
-                        if(!onMulDiv && !onExp){
-                            if(lastOp.equals("-"))
-                                lastAS.getKey().number = lastAS.getKey().number.subtract(nu);
-                            else
-                                lastAS.getKey().number = lastAS.getKey().number.add(nu);
-                            // Set the last operator to current
-                            lastAS.getValue().data = currPair.getValue().data;
-                        }
-                        else if(onMulDiv && !onExp) {
-                            if (lastOp.equals("/"))
-                                mulRes = mulRes.divide(nu);
-                            else
-                                mulRes = mulRes.multiply(nu);
-
-                            currPair = new Pair<>(new CalcNode(CalcNode.Types.NUMBER, null, mulRes), currPair.getValue());
-                            lastPair = lastAS;
-                        }
-                        else if(onExp) {
-                            expRes = expRes.pow(nu.intValue());
-
-
-                        }
             }
             catch (ArithmeticException e) {
-                throw new NodeProcessException(NodeProcessException.Type.CALCULATION_ERROR, 0, currNode);
+                throw new NodeProcessException(NodeProcessException.Type.CALCULATION_ERROR);
             } catch (NullPointerException e) {
-                throw new NodeProcessException(NodeProcessException.Type.SYNTAX_ERROR, 0, currNode);
+                throw new NodeProcessException(NodeProcessException.Type.SYNTAX_ERROR, 0);
             }
+
+            currPair = null;
         }
 
-        return new CalcNode(CalcNode.Types.NUMBER, "calculateBasicChain", currResult);
+        return new CalcNode(CalcNode.Types.NUMBER, "calculateBasicChain", lastAS.getKey().number);
     }
 
     private CalcNode calculateFunction(CalcNode funcNode){
@@ -542,19 +614,19 @@ public class StringCalculator extends AsyncQueueCalculatorPlugin{
             NORMAL
         }
 
-        public Code code;
-        public CalcNode blockRes;
+        Code code;
+        CalcNode blockRes;
 
         // Statistics of the block.
-        public int iterations = 0, bopCount = 0, numCount = 0, funCount = 0, conCount = 0;
-        public int specCount = 0, blockCount = 0, ctlNodeCount = 0, calcNodeCount = 0;
+        int iterations = 0, bopCount = 0, numCount = 0, funCount = 0, conCount = 0;
+        int specCount = 0, blockCount = 0, ctlNodeCount = 0, calcNodeCount = 0;
 
-        //public Result res;
-        public RecursiveResult(Code cod, BigDecimal bigRes){
+        //Result res;
+        RecursiveResult(Code cod, BigDecimal bigRes){
             code = cod; blockRes = new CalcNode( CalcNode.Types.NUMBER, null, bigRes );
         }
 
-        public void addStats(RecursiveResult res){
+        void addStats(RecursiveResult res){
             iterations += res.iterations;
             bopCount += res.bopCount;
             numCount += res.numCount;
@@ -600,7 +672,7 @@ public class StringCalculator extends AsyncQueueCalculatorPlugin{
      */
     public static void TestDEBUG1(){
         String calcExpr;
-        calcExpr = "+2-(0)";
+        calcExpr = "2*3^2*2";
         /*calcExpr = "2*892 +    333.5+5^8 +log258(5)+(875+4-sin(pi)*2(opa())) +" +
         " 3*8781.122 ((0) (((2.654*2))    ((33453.54+5^2.58) +laog258(pi-(2*42.5446)))+(875+4.45654-sin(pi))*2(opa()))+(2))";
         */
